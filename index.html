@@ -12,7 +12,7 @@
   html,body{height:100%;background:#03020a;overflow:hidden;color:var(--ink);
     font-family:"Trebuchet MS",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
     -webkit-tap-highlight-color:transparent;user-select:none}
-  canvas{position:fixed;inset:0;display:block;touch-action:none;cursor:grab}
+  canvas{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
   canvas:active{cursor:grabbing}
 
   .card{background:linear-gradient(160deg,rgba(30,22,60,.92),rgba(8,10,28,.94));
@@ -21,8 +21,8 @@
     width:min(340px,calc(100vw - 32px))}
 
   /* Intro */
-  #intro{position:fixed;inset:0;display:grid;place-items:center;z-index:5;transition:opacity .9s, transform .9s}
-  #intro.out{opacity:0;transform:scale(1.08);pointer-events:none}
+  #intro{position:fixed;inset:0;display:grid;place-items:center;z-index:5;transition:opacity 1.8s ease, transform 2.4s ease, filter 1.8s ease}
+  #intro.out{opacity:0;transform:scale(1.12);filter:blur(6px);pointer-events:none}
   #intro h1{font-size:28px;letter-spacing:.5px;margin:14px 0 6px;
     background:linear-gradient(90deg,var(--cyan),var(--violet),var(--gold));
     -webkit-background-clip:text;background-clip:text;color:transparent}
@@ -97,7 +97,8 @@
   #spotBox{position:fixed;z-index:7;display:none;border-radius:14px;overflow:hidden;background:#121212;
     box-shadow:0 0 30px rgba(122,240,255,.18)}
   #spotBox iframe{display:block;width:100%!important;height:100%!important;border:0}
-  #spotBox.intro{display:block}
+  #spotBox.intro{display:block;transition:opacity 1.4s ease}
+  #spotBox.intro.fade{opacity:0;pointer-events:none}
   #spotBox.panel{display:block;z-index:4;left:16px;bottom:78px;width:min(330px,calc(100vw - 32px));height:min(420px,62vh);
     opacity:0;transform:translateY(12px);pointer-events:none;transition:opacity .35s,transform .35s}
   #spotBox.panel.open{opacity:1;transform:none;pointer-events:auto}
@@ -507,16 +508,19 @@ const spotBox = $("spotBox");
 function startShow(withMp3) {
   if (started) return;
   if (withMp3) playSong(0);
-  $("intro").classList.add("out"); started = true; t0 = performance.now();
+  $("intro").classList.add("out"); started = true; t0 = performance.now() + 1200;
   if (spotM) {
-    // el reproductor pasa al panel 🎵 sin recargarse (la música sigue)
-    spotBox.classList.remove("intro"); spotBox.removeAttribute("style"); spotBox.classList.add("panel");
-    setTimeout(() => $("musicBtn").classList.add("on"), 6000);
+    // el reproductor se desvanece y pasa al panel 🎵 sin recargarse (la música sigue)
+    spotBox.classList.add("fade");
+    setTimeout(() => {
+      spotBox.classList.remove("intro", "fade"); spotBox.removeAttribute("style"); spotBox.classList.add("panel");
+    }, 1500);
+    setTimeout(() => $("musicBtn").classList.add("on"), 9000);
   }
-  setTimeout(() => $("top").classList.add("on"), 5600);
-  setTimeout(() => $("hint").classList.add("on"), 7000);
-  setTimeout(() => $("msgBtn").classList.add("on"), 7000);
-  setTimeout(() => $("hint").classList.remove("on"), 14000);
+  setTimeout(() => $("top").classList.add("on"), 8200);
+  setTimeout(() => $("hint").classList.add("on"), 10000);
+  setTimeout(() => $("msgBtn").classList.add("on"), 10000);
+  setTimeout(() => $("hint").classList.remove("on"), 17000);
 }
 $("go").onclick = () => startShow(true);
 $("noMusic").onclick = () => startShow(false);
@@ -558,7 +562,7 @@ function starPath(x, y, ro, ri, rot) {
 let shooting = [];
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
-  if (started) { T = (now - t0) / 1000; gt += dt; }
+  if (started) { T = (now - t0) / 1000 * 0.8; if (T > 0) gt += dt; }
   // auto-rotación con inercia
   if (!ptrs.size) { yawVel *= 0.94; yaw += yawVel + dt * 0.07; }
   cY = Math.cos(yaw); sY = Math.sin(yaw); cP = Math.cos(pitch); sP = Math.sin(pitch);
@@ -587,12 +591,13 @@ function frame(now) {
     ctx.strokeStyle = gr; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(s.x - s.vx * .18, s.y - s.vy * .18); ctx.stroke();
   }
 
-  if (started) drawScene();
+  if (started && T > 0) drawScene();
   requestAnimationFrame(frame);
 }
 
 function drawScene() {
   const forming = T < 3.6;
+  const fadeIn = smooth(0, 2.2, T);
   // brillo del núcleo
   proj(0, 0, 0); const ox = P[0], oy = P[1], ok = P[2];
   const coreA = smooth(0.8, 3, T);
@@ -603,7 +608,7 @@ function drawScene() {
   // partículas de la galaxia
   for (let b = 0; b < bins.length; b++) {
     const L = bins[b]; if (!L.length) continue;
-    ctx.fillStyle = COLS[b];
+    ctx.fillStyle = COLS[b]; ctx.globalAlpha = fadeIn;
     for (let n = 0; n < L.length; n++) {
       const i = L[n];
       const a = gA[i] + gW[i] * gt, r = gR[i];
@@ -619,6 +624,7 @@ function drawScene() {
     }
   }
 
+  ctx.globalAlpha = 1;
   // agujero negro + anillo
   if (T > 1.2) {
     const al = smooth(1.2, 3, T);
