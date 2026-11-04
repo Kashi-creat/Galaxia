@@ -219,8 +219,9 @@ if (!gl) { $("nogl").style.display = "grid"; throw new Error("no webgl"); }
 
 let W, H, DPR, PORT, FOCAL;
 const FOV = 55 * Math.PI / 180;
+let dprCap = qp.get("calidad") === "baja" ? 1 : 2, drawFrac = qp.get("calidad") === "baja" ? .5 : 1, quality = 0;
 function resize() {
-  DPR = Math.min(devicePixelRatio || 1, 2);
+  DPR = Math.min(devicePixelRatio || 1, dprCap);
   W = Math.max(1, innerWidth); H = Math.max(1, innerHeight); PORT = H > W;
   glc.width = ov.width = Math.round(W * DPR); glc.height = ov.height = Math.round(H * DPR);
   gl.viewport(0, 0, glc.width, glc.height);
@@ -615,18 +616,35 @@ for (let i = 0; i < NB; i++) {
 const bBgPos = buffer(bgPos), bBgCol = buffer(bgCol), bBgSA = buffer(bgSA, true);
 
 /* ---------- estrella gigante (partículas) ---------- */
-const NS = 2600, sLoc = new Float32Array(NS * 2), sJit = new Float32Array(NS * 2), sDel = new Float32Array(NS), sSz = new Float32Array(NS), sPh = new Float32Array(NS);
+const NS = 4200, sZ = new Float32Array(NS), sLoc = new Float32Array(NS * 2), sJit = new Float32Array(NS * 2), sDel = new Float32Array(NS), sSz = new Float32Array(NS), sPh = new Float32Array(NS);
 const sPos = new Float32Array(NS * 3), sCol = new Float32Array(NS * 3), sSA = new Float32Array(NS * 2);
 {
   const V = []; for (let j = 0; j < 10; j++) { const a = Math.PI / 2 + j * Math.PI / 5, rr = j % 2 ? 0.42 : 1; V.push([Math.cos(a) * rr, Math.sin(a) * rr]); }
   const inside = (x, y) => { let c = false; for (let i = 0, j = 9; i < 10; j = i++) { const [xi, yi] = V[i], [xj, yj] = V[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
+  // distancia al borde (para darle volumen: gruesa en el centro, fina en las puntas)
+  const segD = (x, y, A, B) => { const dx = B[0] - A[0], dy = B[1] - A[1]; const t = clamp(((x - A[0]) * dx + (y - A[1]) * dy) / (dx * dx + dy * dy), 0, 1); return Math.hypot(x - A[0] - dx * t, y - A[1] - dy * t); };
+  const edgeD = (x, y) => { let d = 9; for (let k = 0; k < 10; k++) d = Math.min(d, segD(x, y, V[k], V[(k + 1) % 10])); return d; };
+  const DEPTH = 0.42;
   for (let i = 0; i < NS; i++) {
-    let x, y;
-    if (rnd() < .55) { const e = (rnd() * 10) | 0, t = rnd(), A = V[e], B = V[(e + 1) % 10]; x = A[0] + (B[0] - A[0]) * t + gauss() * .02; y = A[1] + (B[1] - A[1]) * t + gauss() * .02; }
-    else { do { x = rnd() * 2 - 1; y = rnd() * 2 - 1; } while (!inside(x, y)); }
-    sLoc.set([x, y + .08], i * 2); sJit.set([gauss() * .8, gauss() * .8], i * 2);
-    sDel[i] = rnd() * 1.6; sSz[i] = .8 + rnd() * 1.6; sPh[i] = rnd() * TAU;
-    const w = rnd(); sCol.set(w < .55 ? [1, .78, .38] : w < .8 ? [1, .95, .85] : [.55, .92, 1], i * 3);
+    let x, y, z, w = rnd(), col;
+    const kind = rnd();
+    if (kind < .28) {                       // contorno (el borde brillante)
+      const e = (rnd() * 10) | 0, t = rnd(), A = V[e], B = V[(e + 1) % 10];
+      x = A[0] + (B[0] - A[0]) * t + gauss() * .012; y = A[1] + (B[1] - A[1]) * t + gauss() * .012; z = gauss() * .015;
+      col = w < .6 ? [1, .86, .5] : [1, .97, .9];
+    } else if (kind < .4) {                 // aristas que van del centro a cada punta y a cada valle (las "costuras" de las caras)
+      const k = (rnd() * 10) | 0, t = rnd(), side = rnd() < .5 ? 1 : -1;
+      x = V[k][0] * t; y = V[k][1] * t; z = side * DEPTH * (1 - t) * (k % 2 ? .55 : 1) + gauss() * .01;
+      col = [1, .95, .82];
+    } else {                                // caras: superficie de adelante y de atrás
+      do { x = rnd() * 2 - 1; y = rnd() * 2 - 1; } while (!inside(x, y));
+      const f = clamp(edgeD(x, y) / .33, 0, 1);
+      z = (rnd() < .5 ? 1 : -1) * DEPTH * f + gauss() * .01;
+      col = w < .6 ? [1, .74, .32] : w < .85 ? [1, .9, .7] : [.55, .9, 1];
+    }
+    sLoc.set([x, y + .08], i * 2); sZ[i] = z; sJit.set([gauss() * .8, gauss() * .8], i * 2);
+    sDel[i] = rnd() * 1.6; sSz[i] = (kind < .4 ? 1.1 : .7) + rnd() * 1.2; sPh[i] = rnd() * TAU;
+    sCol.set(col, i * 3);
   }
 }
 const bSPos = buffer(sPos, true), bSCol = buffer(sCol), bSSA = buffer(sSA, true);
@@ -786,6 +804,7 @@ function buildTextTargets() {
 /* estado general */
 let started = false, T0 = 0, last = performance.now(), gt = 0;
 let form = 0, morph = 0, morphGoal = 0, sceneFade = 1;
+let perfSum = 0, perfN = 0;
 let tween = null, fwTimer = 0, surprise = false, arrived = false, backing = false, sT0 = 0, suck = 0, sNow = 0, hyper = false, hT0 = 0;
 
 function tweenCam(to, dur, done, ease) {
@@ -855,6 +874,20 @@ function drawPoints(pos, col, sa, n, size, fixed) {
 let shooting = [];
 function frame(now) {
   const rdt = Math.min(.5, (now - last) / 1000), dt = Math.min(.05, rdt); last = now;
+  // calidad automática: si el celu va lento, baja resolución y cantidad de estrellas (nunca vuelve a subir)
+  if (started && !document.hidden && rdt > 0 && rdt < .5) {
+    perfSum += rdt; perfN++;
+    if (perfN >= 75) {
+      const fps = perfN / perfSum; perfSum = 0; perfN = 0;
+      if (fps < 40 && quality < 3) {
+        quality++;
+        if (quality === 1) dprCap = 1.5;
+        else if (quality === 2) { dprCap = 1; drawFrac = .65; }
+        else drawFrac = .42;
+        resize();
+      }
+    }
+  }
   const time = now / 1000;
   if (started) { gt += dt; T0 += 0; }
   const T = started ? (now - T0) / 1000 : 0;
@@ -947,19 +980,22 @@ function frame(now) {
     gl.uniform1f(GALAXY.u.uBang, bx); gl.uniform1f(GALAXY.u.uSuck, suck); gl.uniform1f(GALAXY.u.uMaxPt, 7.0 * DPR); gl.uniform1f(GALAXY.u.uCharge, hyper ? smooth(0, 1, (now - hT0) / 1000) * (1 - smooth(1.6, 1.9, (now - hT0) / 1000)) : 0); gl.uniform1f(GALAXY.u.uHeat, T < TB ? 1 : Math.exp(-(T - TB) * .55));
     attr(GALAXY, "aGal", bGal, 3); attr(GALAXY, "aStart", bStart, 3); attr(GALAXY, "aTarget", bTarget, 3);
     attr(GALAXY, "aColor", bCol, 3); attr(GALAXY, "aMisc", bMisc, 2);
-    gl.drawArrays(gl.POINTS, 0, NG); disableAttrs(GALAXY);
+    gl.drawArrays(gl.POINTS, 0, Math.floor(NG * drawFrac)); disableAttrs(GALAXY);
     gl.disable(gl.DEPTH_TEST);
 
     // estrella gigante + chorro
     const st = TG - 4.2;
     if (st > 0 && sceneFade > .01) {
-      const spin = Math.sin(gt * .6) * .45, cs = Math.cos(spin), pulse = 1 + .04 * Math.sin(gt * 2.4);
+      const ang = gt * .55, ca = Math.cos(ang), sa = Math.sin(ang), pulse = 1 + .04 * Math.sin(gt * 2.4);
+      const tilt = Math.sin(gt * .4) * .12, ct = Math.cos(tilt), stt = Math.sin(tilt);
       for (let i = 0; i < NS; i++) {
         const p = clamp((st - sDel[i]) / 1.8, 0, 1);
         const rise = 1 - Math.pow(1 - clamp(p * 1.7, 0, 1), 3), spread = smooth(.45, 1, p);
-        const ox = sLoc[i * 2] * cs * STAR_R * pulse * spread, oy = sLoc[i * 2 + 1] * STAR_R * pulse * spread;
+        const k = STAR_R * pulse * spread;
+        const lx = sLoc[i * 2] * k, ly0 = sLoc[i * 2 + 1] * k, lz0 = sZ[i] * k;
+        const ly = ly0 * ct - lz0 * stt, lz = ly0 * stt + lz0 * ct;          // leve balanceo
         const jx = sJit[i * 2] * (1 - spread), jz = sJit[i * 2 + 1] * (1 - spread);
-        sPos[i * 3] = jx + RX[0] * ox + UY[0] * oy; sPos[i * 3 + 1] = STAR_Y * rise + RX[1] * ox + UY[1] * oy; sPos[i * 3 + 2] = jz + RX[2] * ox + UY[2] * oy;
+        sPos[i * 3] = jx + lx * ca + lz * sa; sPos[i * 3 + 1] = STAR_Y * rise + ly; sPos[i * 3 + 2] = jz - lx * sa + lz * ca;
         sSA[i * 2] = sSz[i] * (1 + .25 * Math.sin(gt * 3 + sPh[i])); sSA[i * 2 + 1] = p > 0 ? sceneFade : 0;
       }
       gl.bindBuffer(gl.ARRAY_BUFFER, bSPos); gl.bufferSubData(gl.ARRAY_BUFFER, 0, sPos);
