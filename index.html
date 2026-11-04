@@ -1,0 +1,727 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Bestfriends</title>
+<style>
+  :root{
+    --cyan:#7af0ff; --violet:#a07bff; --gold:#ffd27a; --ink:#eaf6ff;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:#03020a;overflow:hidden;color:var(--ink);
+    font-family:"Trebuchet MS",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    -webkit-tap-highlight-color:transparent;user-select:none}
+  canvas{position:fixed;inset:0;display:block;touch-action:none;cursor:grab}
+  canvas:active{cursor:grabbing}
+
+  .card{background:linear-gradient(160deg,rgba(30,22,60,.92),rgba(8,10,28,.94));
+    border:1px solid rgba(160,123,255,.35);border-radius:22px;padding:30px 26px 26px;
+    text-align:center;box-shadow:0 0 60px rgba(122,240,255,.12),0 20px 60px rgba(0,0,0,.6);
+    width:min(340px,calc(100vw - 32px))}
+
+  /* Intro */
+  #intro{position:fixed;inset:0;display:grid;place-items:center;z-index:5;transition:opacity .9s, transform .9s}
+  #intro.out{opacity:0;transform:scale(1.08);pointer-events:none}
+  #intro h1{font-size:28px;letter-spacing:.5px;margin:14px 0 6px;
+    background:linear-gradient(90deg,var(--cyan),var(--violet),var(--gold));
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  #intro .para{opacity:.8;font-size:15px;margin-bottom:22px}
+  .planet{width:86px;height:86px;margin:4px auto 0;position:relative;animation:float 4s ease-in-out infinite}
+  .planet::before{content:"";position:absolute;inset:14px;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%,#fff6d8,#ffd27a 30%,#b77bff 75%,#4a2fa0);
+    box-shadow:0 0 30px rgba(255,210,122,.45)}
+  .planet .ring{position:absolute;left:-4px;right:-4px;top:36px;height:16px;border-radius:50%;
+    border:3px solid rgba(122,240,255,.85);transform:rotate(-16deg);
+    box-shadow:0 0 14px rgba(122,240,255,.6)}
+  .planet .ring::after{content:"";position:absolute;left:-3px;right:-3px;top:-3px;height:9px;
+    background:transparent;border-radius:50% 50% 0 0/100% 100% 0 0}
+  @keyframes float{50%{transform:translateY(-6px)}}
+
+  button{font:inherit;cursor:pointer;border:0;border-radius:999px;padding:11px 26px;font-weight:700;
+    color:#120a2a;background:linear-gradient(90deg,var(--cyan),var(--gold));
+    box-shadow:0 0 22px rgba(122,240,255,.35);transition:transform .15s}
+  button:active{transform:scale(.95)}
+  button.ghost{background:transparent;color:var(--ink);border:1px solid rgba(234,246,255,.3);box-shadow:none}
+
+  /* Top title */
+  #top{position:fixed;top:18px;left:0;right:0;text-align:center;z-index:2;pointer-events:none;
+    opacity:0;transform:translateY(-8px);transition:opacity 1.6s, transform 1.6s}
+  #top.on{opacity:1;transform:none}
+  #top .small{display:block;font-size:12px;letter-spacing:3px;text-transform:uppercase;opacity:.65}
+  #top .big{display:block;font-size:24px;font-weight:700;margin-top:2px;
+    background:linear-gradient(90deg,var(--cyan),var(--gold));-webkit-background-clip:text;background-clip:text;color:transparent;
+    text-shadow:0 0 30px rgba(122,240,255,.25)}
+
+  #hint{position:fixed;bottom:22px;left:0;right:0;text-align:center;font-size:14px;opacity:0;z-index:2;
+    pointer-events:none;transition:opacity 1.2s}
+  #hint.on{opacity:.85}
+  #hint span{background:rgba(10,8,30,.6);border:1px solid rgba(160,123,255,.3);padding:8px 16px;border-radius:999px}
+
+  #msgBtn{position:fixed;right:16px;bottom:16px;width:50px;height:50px;padding:0;font-size:22px;z-index:3;
+    opacity:0;pointer-events:none;transition:opacity 1s}
+  #msgBtn.on{opacity:1;pointer-events:auto}
+
+  /* Reproductor */
+  #musicBtn{position:fixed;left:16px;bottom:16px;width:50px;height:50px;padding:0;font-size:22px;z-index:4;
+    opacity:0;pointer-events:none;transition:opacity 1s}
+  #musicBtn.on{opacity:1;pointer-events:auto}
+  #musicBtn.playing{animation:spin 4s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  #player{position:fixed;left:16px;bottom:78px;z-index:4;width:min(330px,calc(100vw - 32px));
+    padding:18px 18px 14px;text-align:left;opacity:0;transform:translateY(12px);pointer-events:none;transition:opacity .3s,transform .3s}
+  #player.open{opacity:1;transform:none;pointer-events:auto}
+  #player .now{font-size:11px;letter-spacing:2px;text-transform:uppercase;opacity:.6}
+  #pTitle{font-size:17px;font-weight:700;margin:3px 0 1px;color:var(--gold);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #pArtist{font-size:13px;opacity:.7;min-height:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #pBar{width:100%;margin:12px 0 2px;accent-color:#7af0ff;height:18px;cursor:pointer}
+  .times{display:flex;justify-content:space-between;font-size:11px;opacity:.6;font-variant-numeric:tabular-nums}
+  .ctrl{display:flex;justify-content:center;align-items:center;gap:10px;margin:8px 0 10px}
+  .ctrl button{width:42px;height:42px;padding:0;font-size:17px;background:rgba(234,246,255,.08);color:var(--ink);box-shadow:none}
+  .ctrl button.big{width:54px;height:54px;font-size:22px;color:#120a2a;background:linear-gradient(90deg,var(--cyan),var(--gold));box-shadow:0 0 18px rgba(122,240,255,.35)}
+  .ctrl button.act{color:var(--cyan);background:rgba(122,240,255,.18)}
+  .vol{display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:10px}
+  .vol input{flex:1;accent-color:#ffd27a}
+  #pList{list-style:none;max-height:min(190px,28vh);overflow-y:auto;border-top:1px solid rgba(234,246,255,.12);padding-top:6px}
+  #pList li{display:flex;gap:10px;align-items:center;padding:8px 8px;border-radius:10px;cursor:pointer;font-size:14px}
+  #pList li:hover{background:rgba(234,246,255,.06)}
+  #pList li.cur{background:rgba(122,240,255,.12);color:var(--cyan)}
+  #pList li .n{width:18px;opacity:.5;font-size:12px;text-align:right}
+  /* Spotify */
+  #spotSlot{display:none;height:152px;margin:4px 0 10px}
+  #spotHint{display:none;font-size:14px;color:var(--cyan);margin-bottom:10px;animation:float 2s ease-in-out infinite}
+  #noMusic{display:none;font-size:12px;opacity:.55;color:var(--ink);text-decoration:underline;cursor:pointer;background:none;border:0;box-shadow:none;padding:4px}
+  body.spotify #spotSlot,body.spotify #spotHint{display:block}
+  body.spotify #noMusic{display:inline-block}
+  body.spotify #go{display:none}
+  #spotBox{position:fixed;z-index:7;display:none;border-radius:14px;overflow:hidden;background:#121212;
+    box-shadow:0 0 30px rgba(122,240,255,.18)}
+  #spotBox iframe{display:block;width:100%!important;height:100%!important;border:0}
+  #spotBox.intro{display:block}
+  #spotBox.panel{display:block;z-index:4;left:16px;bottom:78px;width:min(330px,calc(100vw - 32px));height:min(420px,62vh);
+    opacity:0;transform:translateY(12px);pointer-events:none;transition:opacity .35s,transform .35s}
+  #spotBox.panel.open{opacity:1;transform:none;pointer-events:auto}
+  #musicBtn.pulse{animation:pulse 1.6s ease-in-out infinite}
+  @keyframes pulse{50%{box-shadow:0 0 0 10px rgba(122,240,255,.15),0 0 26px rgba(122,240,255,.6)}}
+  #pList li .t{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  /* Mensajes */
+  #msg{position:fixed;inset:0;display:grid;place-items:center;z-index:6;background:rgba(3,2,10,.45);
+    backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);opacity:0;pointer-events:none;transition:opacity .4s}
+  #msg.on{opacity:1;pointer-events:auto}
+  #msg .card{transform:scale(.9);transition:transform .4s}
+  #msg.on .card{transform:none}
+  #mEmoji{font-size:56px;line-height:1;margin-bottom:10px;filter:drop-shadow(0 0 16px rgba(255,210,122,.5))}
+  #mTitle{font-size:22px;margin-bottom:10px;color:var(--gold)}
+  #mText{font-size:15.5px;line-height:1.55;opacity:.92;margin-bottom:20px}
+  #mFirma{font-size:13px;opacity:.7;margin:-8px 0 18px;font-style:italic}
+  .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+  .dots{display:flex;gap:6px;justify-content:center;margin-top:16px}
+  .dots i{width:7px;height:7px;border-radius:50%;background:rgba(234,246,255,.25)}
+  .dots i.on{background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="intro">
+  <div class="card">
+    <div class="planet"><div class="ring"></div></div>
+    <h1>Bestfriends</h1>
+    <p class="para">Para <b class="nombre"></b></p>
+    <p id="spotHint">Dale play ▶ a tu música para empezar</p>
+    <div id="spotSlot"></div>
+    <button id="go">Iniciar ✨</button>
+    <button id="noMusic">o entrar sin música</button>
+  </div>
+</div>
+
+<div id="top"><span class="small">una galaxia para</span><span class="big nombre"></span></div>
+<div id="hint"><span>Tocá las estrellitas ✨</span></div>
+<button id="msgBtn" title="Mensajes">✉️</button>
+<button id="musicBtn" class="ghost" title="Música">🎵</button>
+<div id="player" class="card">
+  <div class="now">Sonando ahora</div>
+  <div id="pTitle">—</div>
+  <div id="pArtist"></div>
+  <input id="pBar" type="range" min="0" max="1000" value="0">
+  <div class="times"><span id="pCur">0:00</span><span id="pDur">0:00</span></div>
+  <div class="ctrl">
+    <button id="pShuf" title="Aleatorio">🔀</button>
+    <button id="pPrev" title="Anterior">⏮</button>
+    <button id="pPlay" class="big" title="Pausa">⏸</button>
+    <button id="pNext" title="Siguiente">⏭</button>
+    <button id="pRep" title="Repetir canción">🔂</button>
+  </div>
+  <div class="vol">🔈<input id="pVol" type="range" min="0" max="100">🔊</div>
+  <ul id="pList"></ul>
+</div>
+<div id="spotBox"><div id="spotEmbed"></div></div>
+
+<div id="msg">
+  <div class="card">
+    <div id="mEmoji"></div>
+    <h2 id="mTitle"></h2>
+    <p id="mText"></p>
+    <p id="mFirma"></p>
+    <div class="row">
+      <button id="mNext">Siguiente ✨</button>
+      <button id="mClose" class="ghost">Cerrar</button>
+    </div>
+    <div class="dots" id="mDots"></div>
+  </div>
+</div>
+
+<script>
+/* =========================================================
+   ✏️  EDITÁ ACÁ  ✏️
+   ========================================================= */
+const CONFIG = {
+  nombre: "Mi mejor amiga",      // <- poné el nombre de tu amiga
+  firma:  "",                    // <- ej: "— Tu amigo de siempre" (si lo dejás vacío no aparece)
+  // 🎵 SPOTIFY: pegá acá el link de la playlist (si lo dejás vacío "" usa los mp3 de abajo)
+  spotify: "https://open.spotify.com/playlist/2MY2ljio24Y6vkBCtLPZI4?si=aa93997dc6244e01",
+
+  // 🎵 PLAYLIST con mp3 (solo se usa si spotify está vacío): poné los .mp3 en la misma carpeta que este archivo.
+  // Podés agregar todas las que quieras, una por línea (con coma al final).
+  // archivo = nombre exacto del mp3 · titulo y artista = lo que se muestra
+  canciones: [
+    { archivo: "cancion1.mp3", titulo: "Canción 1", artista: "Artista" },
+    { archivo: "cancion2.mp3", titulo: "Canción 2", artista: "Artista" },
+    { archivo: "cancion3.mp3", titulo: "Canción 3", artista: "Artista" },
+  ],
+  volumen: 0.7,                  // de 0 a 1
+  frases: [                      // frases que giran en la galaxia
+    "MEJOR AMIGA ★",
+    "TE QUIERO MUCHO",
+    "AMISTAD INFINITA ∞",
+    "GRACIAS POR EXISTIR",
+    "HERMANA DE LA VIDA",
+    "SIEMPRE CONTÁS CONMIGO",
+    "AMIGOS PARA SIEMPRE",
+    "MI CÓMPLICE DE RISAS",
+    "BEST FRIENDS ★"
+  ],
+  mensajes: [                    // lo que aparece al tocar las estrellitas
+    { emoji:"🌟", titulo:"Mejor amiga",
+      texto:"De todas las personas del universo, qué suerte que me tocaste vos como amiga." },
+    { emoji:"🫂", titulo:"Gracias",
+      texto:"Por bancarme, por las charlas eternas y por estar siempre, incluso cuando no hace falta decir nada." },
+    { emoji:"😂", titulo:"Cómplices",
+      texto:"Las mejores risas y los peores chistes los compartí con vos. Que no se terminen nunca." },
+    { emoji:"🪐", titulo:"Pase lo que pase",
+      texto:"Acá vas a tener siempre a alguien que te banca. Eso no cambia nunca." },
+    { emoji:"✨", titulo:"Te quiero mucho, amiga",
+      texto:"Sos como la hermana que elegí. Esta galaxia es toda tuya." }
+  ]
+};
+/* ========================================================= */
+
+const qp = new URLSearchParams(location.search);
+if (qp.get("para")) CONFIG.nombre = qp.get("para");
+document.querySelectorAll(".nombre").forEach(e => e.textContent = CONFIG.nombre);
+
+const cv = document.getElementById("c"), ctx = cv.getContext("2d");
+const TAU = Math.PI * 2;
+let W, H, DPR, S, CX, CY;
+const R = 420, ARMS = 3, STAR_Y = 250, F = 700, D = 900;
+
+/* ---------- cámara ---------- */
+let yaw = 0, pitch = 0.55, zoom = 1, yawVel = 0;
+let cY, sY, cP, sP;
+const P = [0, 0, 0];
+function proj(x, y, z) {
+  const x1 = x * cY - z * sY, z1 = x * sY + z * cY;
+  const y2 = y * cP + z1 * sP, z2 = -y * sP + z1 * cP;
+  const d = D + z2, k = F / d * S * zoom;
+  P[0] = CX + x1 * k; P[1] = CY - y2 * k; P[2] = k;
+  return d;
+}
+
+/* ---------- utilidades ---------- */
+const rnd = Math.random;
+const g = () => (rnd() + rnd() + rnd() - 1.5) * 1.15;
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const easeIO = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const easeO = t => 1 - Math.pow(1 - t, 3);
+const smooth = (a, b, t) => { t = clamp((t - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+
+const COLS = [
+  "rgba(255,250,240,0.9)",  // 0 blanco núcleo
+  "rgba(120,240,255,0.8)",  // 1 cian
+  "rgba(110,170,255,0.75)", // 2 azul
+  "rgba(160,120,255,0.75)", // 3 violeta
+  "rgba(215,165,255,0.6)",  // 4 lila
+  "rgba(255,214,120,0.9)",  // 5 dorado
+  "rgba(255,196,90,0.85)",  // 6 dorado cálido (estrella)
+  "rgba(255,245,220,0.9)",  // 7 blanco cálido (estrella)
+  "rgba(150,240,255,0.75)"  // 8 cian (estrella)
+];
+
+/* ---------- galaxia ---------- */
+let N, gR, gA, gY, gW, gSz, gX0, gY0, gZ0, gDel, bins;
+function genGalaxy() {
+  N = (innerWidth * innerHeight > 600000) ? 15000 : 9000;
+  gR = new Float32Array(N); gA = new Float32Array(N); gY = new Float32Array(N);
+  gW = new Float32Array(N); gSz = new Float32Array(N);
+  gX0 = new Float32Array(N); gY0 = new Float32Array(N); gZ0 = new Float32Array(N); gDel = new Float32Array(N);
+  const lists = COLS.map(() => []);
+  for (let i = 0; i < N; i++) {
+    let r, a, y; const kind = rnd();
+    if (kind < 0.8) {
+      const t = Math.pow(rnd(), 1.35);
+      r = 20 + t * R + g() * 16;
+      a = (i % ARMS) * TAU / ARMS + r * 0.0125 + g() * 0.2;
+      y = g() * (16 * (1 - t) + 4);
+    } else if (kind < 0.86) {
+      r = Math.abs(g()) * 45 + 10; a = rnd() * TAU; y = g() * 18 * (1 - r / 90);
+    } else {
+      r = rnd() * R * 1.25; a = rnd() * TAU; y = g() * 22;
+    }
+    r = Math.abs(r);
+    const tr = r / R; let cb, sz = 0.8 + rnd() * 1.3;
+    if (rnd() < 0.06) { cb = 5; sz += 0.9; }
+    else if (tr < 0.1) { cb = 0; }
+    else if (tr < 0.35) cb = 1;
+    else if (tr < 0.6) cb = rnd() < .5 ? 2 : 1;
+    else if (tr < 0.85) cb = 3;
+    else cb = 4;
+    gR[i] = r; gA[i] = a; gY[i] = y; gSz[i] = sz;
+    gW[i] = 0.04 + 0.18 * Math.exp(-r / 90);
+    // posición inicial: nube dispersa
+    const th = rnd() * TAU, ph = Math.acos(2 * rnd() - 1), rr = 350 + rnd() * 900;
+    gX0[i] = rr * Math.sin(ph) * Math.cos(th); gY0[i] = rr * Math.cos(ph) * 0.6; gZ0[i] = rr * Math.sin(ph) * Math.sin(th);
+    gDel[i] = rnd() * 1.1 + tr * 0.35;
+    lists[cb].push(i);
+  }
+  bins = lists.map(l => Int32Array.from(l));
+}
+
+/* ---------- estrella gigante ---------- */
+const SN = 2400, ROUT = 115, RIN = 48;
+const sOx = new Float32Array(SN), sOy = new Float32Array(SN), sJx = new Float32Array(SN), sJz = new Float32Array(SN),
+      sDel = new Float32Array(SN), sSz = new Float32Array(SN), sPh = new Float32Array(SN);
+let sBins;
+(function genStar() {
+  const V = [];
+  for (let j = 0; j < 10; j++) {
+    const ang = Math.PI / 2 + j * Math.PI / 5, rr = j % 2 ? RIN : ROUT;
+    V.push([Math.cos(ang) * rr, Math.sin(ang) * rr]);
+  }
+  const inside = (x, y) => {
+    let c = false;
+    for (let i = 0, j = 9; i < 10; j = i++) {
+      const [xi, yi] = V[i], [xj, yj] = V[j];
+      if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c;
+    }
+    return c;
+  };
+  const lists = COLS.map(() => []);
+  for (let i = 0; i < SN; i++) {
+    let x, y, cb;
+    if (rnd() < 0.5) {
+      const e = (rnd() * 10) | 0, t = rnd(), A = V[e], B = V[(e + 1) % 10];
+      x = A[0] + (B[0] - A[0]) * t + g() * 2.5; y = A[1] + (B[1] - A[1]) * t + g() * 2.5;
+      cb = rnd() < .6 ? 6 : 7;
+    } else {
+      do { x = (rnd() * 2 - 1) * ROUT; y = (rnd() * 2 - 1) * ROUT; } while (!inside(x, y));
+      cb = rnd() < .55 ? 6 : (rnd() < .5 ? 8 : 7);
+    }
+    sOx[i] = x; sOy[i] = y + 8;
+    sJx[i] = g() * 6; sJz[i] = g() * 6;
+    sDel[i] = rnd() * 1.6; sSz[i] = 0.9 + rnd() * 1.5; sPh[i] = rnd() * TAU;
+    lists[cb].push(i);
+  }
+  sBins = lists.map(l => Int32Array.from(l));
+})();
+
+/* chorro de partículas del centro a la estrella */
+const QN = 220, qPh = new Float32Array(QN), qJx = new Float32Array(QN), qJz = new Float32Array(QN);
+for (let i = 0; i < QN; i++) { qPh[i] = rnd(); qJx[i] = g() * 7; qJz[i] = g() * 7; }
+
+/* ---------- frases ---------- */
+const labels = CONFIG.frases.map((txt, i) => ({
+  txt, r: 150 + (i % 3) * 85 + rnd() * 30, a: i * TAU / CONFIG.frases.length * 2.0 + rnd() * .4,
+  y: 6, hue: i % 2 ? "#bff8ff" : "#ffe7b0"
+}));
+labels.forEach(l => l.w = 0.04 + 0.18 * Math.exp(-l.r / 90));
+
+/* ---------- estrellitas tocables ---------- */
+const clickStars = Array.from({ length: 6 }, (_, i) => ({
+  r: 140 + rnd() * 250, a: i * TAU / 6 + rnd() * .6, y: 35 + rnd() * 40, ph: rnd() * TAU, sx: -999, sy: -999, hit: 0
+}));
+clickStars.forEach(c => c.w = 0.04 + 0.18 * Math.exp(-c.r / 90));
+
+/* ---------- fondo ---------- */
+const bg = document.createElement("canvas"), bgx = bg.getContext("2d");
+let twinkles = [];
+function renderBg() {
+  bg.width = W * DPR; bg.height = H * DPR; bgx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const gr = bgx.createRadialGradient(W / 2, H * .55, 0, W / 2, H * .55, Math.max(W, H) * .8);
+  gr.addColorStop(0, "#0c0a22"); gr.addColorStop(1, "#020108");
+  bgx.fillStyle = gr; bgx.fillRect(0, 0, W, H);
+  const blobs = [["rgba(120,80,255,0.10)", .2, .25, .5], ["rgba(60,220,255,0.07)", .85, .7, .55], ["rgba(255,200,120,0.05)", .6, .15, .35]];
+  for (const [c, x, y, r] of blobs) {
+    const b = bgx.createRadialGradient(W * x, H * y, 0, W * x, H * y, Math.max(W, H) * r);
+    b.addColorStop(0, c); b.addColorStop(1, "rgba(0,0,0,0)"); bgx.fillStyle = b; bgx.fillRect(0, 0, W, H);
+  }
+  for (let i = 0; i < (W * H) / 2500; i++) {
+    bgx.fillStyle = `rgba(255,255,255,${(rnd() * .5 + .1).toFixed(2)})`;
+    const s = rnd() < .9 ? .8 : 1.5; bgx.fillRect(rnd() * W, rnd() * H, s, s);
+  }
+  twinkles = Array.from({ length: 70 }, () => ({ x: rnd() * W, y: rnd() * H, p: rnd() * TAU, s: .8 + rnd() * 1.6 }));
+}
+
+function glowSprite(rgb) {
+  const c = document.createElement("canvas"); c.width = c.height = 128; const x = c.getContext("2d");
+  const gr = x.createRadialGradient(64, 64, 0, 64, 64, 64);
+  gr.addColorStop(0, `rgba(${rgb},0.9)`); gr.addColorStop(.25, `rgba(${rgb},0.35)`); gr.addColorStop(1, `rgba(${rgb},0)`);
+  x.fillStyle = gr; x.fillRect(0, 0, 128, 128); return c;
+}
+const glowCyan = glowSprite("120,230,255"), glowGold = glowSprite("255,205,110"), glowViolet = glowSprite("150,110,255");
+
+function resize() {
+  DPR = Math.min(devicePixelRatio || 1, 2);
+  W = Math.max(1, innerWidth || document.documentElement.clientWidth || 1);
+  H = Math.max(1, innerHeight || document.documentElement.clientHeight || 1);
+  cv.width = W * DPR; cv.height = H * DPR;
+  S = Math.min(W / (W < H ? 600 : 700), H / 760);
+  CX = W / 2; CY = H * (W < H ? 0.6 : 0.62);
+  renderBg();
+}
+addEventListener("resize", resize);
+resize(); genGalaxy();
+
+/* ---------- interacción ---------- */
+const ptrs = new Map(); let downX = 0, downY = 0, moved = 0, pinch0 = 0, zoom0 = 1;
+cv.addEventListener("pointerdown", e => {
+  cv.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  downX = e.clientX; downY = e.clientY; moved = 0;
+  if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch0 = Math.hypot(a.x - b.x, a.y - b.y); zoom0 = zoom; }
+});
+cv.addEventListener("pointermove", e => {
+  const p = ptrs.get(e.pointerId); if (!p) return;
+  const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY;
+  moved += Math.abs(dx) + Math.abs(dy);
+  if (ptrs.size === 1) {
+    yawVel = dx * 0.006; yaw += dx * 0.006;
+    pitch = clamp(pitch + dy * 0.004, 0.12, 1.35);
+  } else if (ptrs.size === 2) {
+    const [a, b] = [...ptrs.values()]; zoom = clamp(zoom0 * Math.hypot(a.x - b.x, a.y - b.y) / pinch0, 0.5, 2.4);
+  }
+});
+const up = e => {
+  if (ptrs.size === 1 && moved < 8) tap(e.clientX, e.clientY);
+  ptrs.delete(e.pointerId);
+};
+cv.addEventListener("pointerup", up); cv.addEventListener("pointercancel", e => ptrs.delete(e.pointerId));
+cv.addEventListener("wheel", e => { e.preventDefault(); zoom = clamp(zoom * Math.exp(-e.deltaY * 0.001), 0.5, 2.4); }, { passive: false });
+
+let starScreen = { x: -999, y: -999, r: 0 };
+function tap(x, y) {
+  if (!started || T < 5.5) return;
+  for (const c of clickStars) {
+    if (Math.hypot(x - c.sx, y - c.sy) < c.hit) { openMsg(); return; }
+  }
+  if (Math.hypot(x - starScreen.x, y - starScreen.y) < starScreen.r) openMsg();
+}
+
+/* ---------- mensajes ---------- */
+const $ = id => document.getElementById(id);
+let msgIdx = -1;
+$("mDots").innerHTML = CONFIG.mensajes.map(() => "<i></i>").join("");
+function showMsg(i) {
+  const m = CONFIG.mensajes[i];
+  $("mEmoji").textContent = m.emoji; $("mTitle").textContent = m.titulo; $("mText").textContent = m.texto;
+  const last = i === CONFIG.mensajes.length - 1;
+  $("mFirma").textContent = last ? CONFIG.firma : ""; $("mFirma").style.display = last && CONFIG.firma ? "" : "none";
+  $("mNext").textContent = last ? "Volver a empezar ✨" : "Siguiente ✨";
+  [...$("mDots").children].forEach((d, j) => d.classList.toggle("on", j === i));
+}
+function openMsg() { msgIdx = (msgIdx + 1) % CONFIG.mensajes.length; showMsg(msgIdx); $("msg").classList.add("on"); $("hint").classList.remove("on"); }
+$("mNext").onclick = () => { msgIdx = (msgIdx + 1) % CONFIG.mensajes.length; showMsg(msgIdx); };
+$("mClose").onclick = () => $("msg").classList.remove("on");
+$("msg").addEventListener("click", e => { if (e.target.id === "msg") $("msg").classList.remove("on"); });
+$("msgBtn").onclick = openMsg;
+
+/* ---------- inicio ---------- */
+let started = false, T = 0, t0 = 0, last = performance.now(), gt = 0;
+/* ---------- música / playlist ---------- */
+const songs = CONFIG.canciones.map(c => typeof c === "string"
+  ? { archivo: c, titulo: c.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " "), artista: "" } : c);
+const audio = new Audio(); audio.preload = "metadata"; audio.volume = CONFIG.volumen;
+let song = 0, fails = 0, shuffle = false, repeat = false, seeking = false;
+const fmt = t => isFinite(t) ? Math.floor(t / 60) + ":" + String(Math.floor(t % 60)).padStart(2, "0") : "0:00";
+$("pList").innerHTML = songs.map((c, i) =>
+  `<li data-i="${i}"><span class="n">${i + 1}</span><span class="t"></span></li>`).join("");
+[...$("pList").children].forEach((li, i) => {
+  li.querySelector(".t").textContent = songs[i].titulo + (songs[i].artista ? " · " + songs[i].artista : "");
+  li.onclick = () => playSong(i);
+});
+$("pVol").value = CONFIG.volumen * 100;
+$("pVol").oninput = e => audio.volume = e.target.value / 100;
+
+function playSong(i) {
+  if (!songs.length) return;
+  song = (i + songs.length) % songs.length;
+  const c = songs[song];
+  audio.src = encodeURI(c.archivo);
+  $("pTitle").textContent = c.titulo; $("pArtist").textContent = c.artista || "";
+  [...$("pList").children].forEach((li, j) => li.classList.toggle("cur", j === song));
+  $("pList").children[song].scrollIntoView({ block: "nearest" });
+  audio.play().then(() => { fails = 0; $("musicBtn").classList.add("on"); }).catch(() => {});
+  if ("mediaSession" in navigator) navigator.mediaSession.metadata =
+    new MediaMetadata({ title: c.titulo, artist: c.artista || "", album: "Bestfriends" });
+}
+function nextSong() {
+  if (shuffle && songs.length > 1) { let n; do n = (Math.random() * songs.length) | 0; while (n === song); playSong(n); }
+  else playSong(song + 1);
+}
+function prevSong() { audio.currentTime > 3 ? audio.currentTime = 0 : playSong(song - 1); }
+function togglePlay() { audio.paused ? audio.play() : audio.pause(); }
+
+audio.addEventListener("ended", () => repeat ? (audio.currentTime = 0, audio.play()) : nextSong());
+audio.addEventListener("error", () => { if (++fails < songs.length) nextSong(); });
+audio.addEventListener("play", () => { $("pPlay").textContent = "⏸"; $("musicBtn").classList.add("playing"); });
+audio.addEventListener("pause", () => { $("pPlay").textContent = "▶"; $("musicBtn").classList.remove("playing"); });
+audio.addEventListener("loadedmetadata", () => $("pDur").textContent = fmt(audio.duration));
+audio.addEventListener("timeupdate", () => {
+  $("pCur").textContent = fmt(audio.currentTime);
+  if (!seeking && audio.duration) $("pBar").value = audio.currentTime / audio.duration * 1000;
+});
+$("pBar").addEventListener("input", () => { seeking = true; $("pCur").textContent = fmt($("pBar").value / 1000 * audio.duration); });
+$("pBar").addEventListener("change", () => { if (audio.duration) audio.currentTime = $("pBar").value / 1000 * audio.duration; seeking = false; });
+$("pPlay").onclick = togglePlay; $("pNext").onclick = nextSong; $("pPrev").onclick = prevSong;
+$("pShuf").onclick = () => $("pShuf").classList.toggle("act", shuffle = !shuffle);
+$("pRep").onclick = () => $("pRep").classList.toggle("act", repeat = !repeat);
+$("musicBtn").onclick = () => $("player").classList.toggle("open");
+cv.addEventListener("pointerdown", () => $("player").classList.remove("open"));
+if ("mediaSession" in navigator) {
+  navigator.mediaSession.setActionHandler("nexttrack", nextSong);
+  navigator.mediaSession.setActionHandler("previoustrack", prevSong);
+}
+
+const spotM = (CONFIG.spotify || "").match(/open\.spotify\.com\/(?:intl-[a-z]+\/)?(playlist|album|track|artist)\/([A-Za-z0-9]+)/);
+const spotBox = $("spotBox");
+
+function startShow(withMp3) {
+  if (started) return;
+  if (withMp3) playSong(0);
+  $("intro").classList.add("out"); started = true; t0 = performance.now();
+  if (spotM) {
+    // el reproductor pasa al panel 🎵 sin recargarse (la música sigue)
+    spotBox.classList.remove("intro"); spotBox.removeAttribute("style"); spotBox.classList.add("panel");
+    setTimeout(() => $("musicBtn").classList.add("on"), 6000);
+  }
+  setTimeout(() => $("top").classList.add("on"), 5600);
+  setTimeout(() => $("hint").classList.add("on"), 7000);
+  setTimeout(() => $("msgBtn").classList.add("on"), 7000);
+  setTimeout(() => $("hint").classList.remove("on"), 14000);
+}
+$("go").onclick = () => startShow(true);
+$("noMusic").onclick = () => startShow(false);
+
+if (spotM) {
+  document.body.classList.add("spotify");
+  spotBox.classList.add("intro");
+  $("musicBtn").onclick = () => spotBox.classList.toggle("open");
+  cv.addEventListener("pointerdown", () => spotBox.classList.remove("open"));
+  const place = () => {
+    if (!spotBox.classList.contains("intro")) return;
+    const r = $("spotSlot").getBoundingClientRect();
+    Object.assign(spotBox.style, { left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px" });
+  };
+  place(); addEventListener("resize", place); const pi = setInterval(() => started ? clearInterval(pi) : place(), 400);
+
+  window.onSpotifyIframeApiReady = API => {
+    API.createController($("spotEmbed"),
+      { uri: `spotify:${spotM[1]}:${spotM[2]}`, width: "100%", height: 152, theme: "dark" },
+      ctrl => ctrl.addListener("playback_update", e => {
+        if (e && e.data && !e.data.isPaused && !e.data.isBuffering) startShow(false);
+      }));
+  };
+  const sc = document.createElement("script");
+  sc.src = "https://open.spotify.com/embed/iframe-api/v1"; sc.async = true;
+  document.head.appendChild(sc);
+}
+
+/* ---------- dibujo ---------- */
+function starPath(x, y, ro, ri, rot) {
+  ctx.beginPath();
+  for (let j = 0; j < 10; j++) {
+    const a = -Math.PI / 2 + rot + j * Math.PI / 5, r = j % 2 ? ri : ro;
+    j ? ctx.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r) : ctx.moveTo(x + Math.cos(a) * r, y + Math.sin(a) * r);
+  }
+  ctx.closePath();
+}
+
+let shooting = [];
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (started) { T = (now - t0) / 1000; gt += dt; }
+  // auto-rotación con inercia
+  if (!ptrs.size) { yawVel *= 0.94; yaw += yawVel + dt * 0.07; }
+  cY = Math.cos(yaw); sY = Math.sin(yaw); cP = Math.cos(pitch); sP = Math.sin(pitch);
+
+  if (innerWidth && (innerWidth !== W || innerHeight !== H || bg.width < 2)) resize();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = 1;
+  if (bg.width > 1 && bg.height > 1) ctx.drawImage(bg, 0, 0);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+  // estrellas titilantes
+  ctx.globalCompositeOperation = "lighter";
+  for (const s of twinkles) {
+    ctx.globalAlpha = 0.35 + 0.35 * Math.sin(now / 600 + s.p);
+    ctx.fillStyle = "#cfefff"; ctx.fillRect(s.x, s.y, s.s, s.s);
+  }
+  ctx.globalAlpha = 1;
+
+  // estrellas fugaces
+  if (rnd() < 0.006) shooting.push({ x: rnd() * W, y: rnd() * H * .5, vx: -(300 + rnd() * 300), vy: 120 + rnd() * 150, life: 1 });
+  shooting = shooting.filter(s => s.life > 0);
+  for (const s of shooting) {
+    s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt * 1.2;
+    const gr = ctx.createLinearGradient(s.x, s.y, s.x - s.vx * .18, s.y - s.vy * .18);
+    gr.addColorStop(0, `rgba(220,245,255,${s.life})`); gr.addColorStop(1, "rgba(220,245,255,0)");
+    ctx.strokeStyle = gr; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(s.x - s.vx * .18, s.y - s.vy * .18); ctx.stroke();
+  }
+
+  if (started) drawScene();
+  requestAnimationFrame(frame);
+}
+
+function drawScene() {
+  const forming = T < 3.6;
+  // brillo del núcleo
+  proj(0, 0, 0); const ox = P[0], oy = P[1], ok = P[2];
+  const coreA = smooth(0.8, 3, T);
+  ctx.globalAlpha = 0.55 * coreA; let gs = 260 * ok; ctx.drawImage(glowViolet, ox - gs, oy - gs * sP - gs * 0.2, gs * 2, gs * 2 * sP + gs * 0.4);
+  ctx.globalAlpha = 0.45 * coreA; gs = 90 * ok; ctx.drawImage(glowCyan, ox - gs, oy - gs, gs * 2, gs * 2);
+  ctx.globalAlpha = 1;
+
+  // partículas de la galaxia
+  for (let b = 0; b < bins.length; b++) {
+    const L = bins[b]; if (!L.length) continue;
+    ctx.fillStyle = COLS[b];
+    for (let n = 0; n < L.length; n++) {
+      const i = L[n];
+      const a = gA[i] + gW[i] * gt, r = gR[i];
+      let x = r * Math.cos(a), y = gY[i], z = r * Math.sin(a);
+      if (forming) {
+        const e = easeIO(clamp((T - gDel[i]) / 2.2, 0, 1));
+        x = gX0[i] + (x - gX0[i]) * e; y = gY0[i] + (y - gY0[i]) * e; z = gZ0[i] + (z - gZ0[i]) * e;
+      }
+      const x1 = x * cY - z * sY, z1 = x * sY + z * cY;
+      const d = D + (-y * sP + z1 * cP); if (d < 60) continue;
+      const k = F / d * S * zoom, s = gSz[i] * k;
+      ctx.fillRect(CX + x1 * k - s / 2, CY - (y * cP + z1 * sP) * k - s / 2, s, s);
+    }
+  }
+
+  // agujero negro + anillo
+  if (T > 1.2) {
+    const al = smooth(1.2, 3, T);
+    ctx.save(); ctx.translate(ox, oy); ctx.scale(1, Math.max(sP, 0.15));
+    const rg = ctx.createRadialGradient(0, 0, 14 * ok, 0, 0, 44 * ok);
+    rg.addColorStop(0, "rgba(255,255,255,0)"); rg.addColorStop(.25, `rgba(255,245,220,${.9 * al})`);
+    rg.addColorStop(.5, `rgba(120,230,255,${.55 * al})`); rg.addColorStop(1, "rgba(120,80,255,0)");
+    ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(0, 0, 44 * ok, 0, TAU); ctx.fill(); ctx.restore();
+    ctx.globalCompositeOperation = "source-over";
+    ctx.fillStyle = `rgba(0,0,0,${al})`; ctx.beginPath(); ctx.arc(ox, oy, 12 * ok, 0, TAU); ctx.fill();
+    ctx.strokeStyle = `rgba(255,240,210,${.8 * al})`; ctx.lineWidth = Math.max(1, 1.6 * ok);
+    ctx.beginPath(); ctx.arc(ox, oy, 13 * ok, 0, TAU); ctx.stroke();
+    ctx.globalCompositeOperation = "lighter";
+  }
+
+  // frases sobre el plano
+  if (T > 5) drawLabels(smooth(5, 6.8, T));
+
+  // estrella gigante
+  if (T > 2.8) drawBigStar(T - 2.8);
+
+  // estrellitas tocables
+  if (T > 5.5) drawClickStars(smooth(5.5, 7, T));
+}
+
+function drawLabels(alpha) {
+  ctx.font = "700 15px 'Trebuchet MS',system-ui,sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  for (const l of labels) {
+    const a = l.a + l.w * gt, ca = Math.cos(a), sa = Math.sin(a);
+    const px = l.r * ca, pz = l.r * sa;
+    const d = proj(px, l.y, pz); const x0 = P[0], y0 = P[1];
+    proj(px - sa * 10, l.y, pz + ca * 10); let ax = (P[0] - x0) / 10, ay = (P[1] - y0) / 10;
+    proj(px + ca * 10, l.y, pz + sa * 10); let bx = (P[0] - x0) / 10, by = (P[1] - y0) / 10;
+    if (ax < 0) { ax = -ax; ay = -ay; bx = -bx; by = -by; }
+    // que el texto "mire hacia arriba" en pantalla
+    if (by > 0) { bx = -bx; by = -by; ax = -ax; ay = -ay; if (ax < 0) { ax = -ax; ay = -ay; bx = -bx; by = -by; } }
+    const depthA = clamp(1.25 - (d - D + 300) / 900, 0.25, 1);
+    ctx.setTransform(DPR * ax, DPR * ay, DPR * bx, DPR * by, DPR * x0, DPR * y0);
+    ctx.globalAlpha = alpha * depthA;
+    ctx.shadowColor = "rgba(140,110,255,0.9)"; ctx.shadowBlur = 10;
+    ctx.fillStyle = l.hue; ctx.fillText(l.txt, 0, 0);
+  }
+  ctx.shadowBlur = 0; ctx.globalAlpha = 1; ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+
+function drawBigStar(t) {
+  proj(0, STAR_Y, 0); const cx = P[0], cy = P[1], k = P[2];
+  const spin = Math.sin(gt * 0.6) * 0.45, cs = Math.cos(spin);
+  const pulse = 1 + 0.035 * Math.sin(gt * 2.4);
+  const formed = smooth(1.6, 3.2, t);
+  starScreen = { x: cx, y: cy, r: ROUT * k * 0.9 };
+  // halo
+  ctx.globalAlpha = 0.5 * formed; const gs = 230 * k; ctx.drawImage(glowGold, cx - gs, cy - gs, gs * 2, gs * 2); ctx.globalAlpha = 1;
+
+  for (let b = 0; b < sBins.length; b++) {
+    const L = sBins[b]; if (!L.length) continue; ctx.fillStyle = COLS[b];
+    for (let n = 0; n < L.length; n++) {
+      const i = L[n];
+      const p = clamp((t - sDel[i]) / 1.7, 0, 1); if (p <= 0) continue;
+      const rise = easeO(clamp(p * 1.7, 0, 1)), spread = smooth(0.45, 1, p);
+      const tw = 1 + 0.25 * Math.sin(gt * 3 + sPh[i]);
+      proj(sJx[i] * (1 - spread), STAR_Y * rise, sJz[i] * (1 - spread));
+      const kk = P[2], s = sSz[i] * kk * tw;
+      ctx.fillRect(P[0] + sOx[i] * cs * pulse * kk * spread - s / 2, P[1] - sOy[i] * pulse * kk * spread - s / 2, s, s);
+    }
+  }
+  // chorro continuo
+  if (formed > 0) {
+    ctx.globalAlpha = 0.8 * formed;
+    for (let i = 0; i < QN; i++) {
+      const ph = (qPh[i] + gt * 0.35) % 1;
+      proj(qJx[i] * (1 - ph * .7), ph * (STAR_Y - 60), qJz[i] * (1 - ph * .7));
+      const s = (1 + (i % 3) * 0.5) * P[2];
+      ctx.fillStyle = i % 3 ? COLS[8] : COLS[6];
+      ctx.fillRect(P[0] - s / 2, P[1] - s / 2, s, s);
+    }
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawClickStars(alpha) {
+  for (const c of clickStars) {
+    const a = c.a + c.w * gt, y = c.y + Math.sin(gt * 1.5 + c.ph) * 8;
+    proj(c.r * Math.cos(a), y, c.r * Math.sin(a));
+    const k = P[2], size = Math.max(9, 15 * k);
+    c.sx = P[0]; c.sy = P[1]; c.hit = Math.max(26, size * 2.2);
+    const pul = 0.5 + 0.5 * Math.sin(gt * 3 + c.ph);
+    ctx.globalAlpha = alpha * (0.5 + 0.4 * pul);
+    const gs = size * 3.2; ctx.drawImage(glowGold, c.sx - gs, c.sy - gs, gs * 2, gs * 2);
+    ctx.globalAlpha = alpha;
+    ctx.globalCompositeOperation = "source-over";
+    starPath(c.sx, c.sy, size, size * 0.45, gt * 0.8 + c.ph);
+    const gr = ctx.createRadialGradient(c.sx, c.sy, 0, c.sx, c.sy, size);
+    gr.addColorStop(0, "#fffaf0"); gr.addColorStop(.6, "#ffd27a"); gr.addColorStop(1, "#ffb84a");
+    ctx.fillStyle = gr; ctx.fill();
+    // anillo "tocame"
+    ctx.globalAlpha = alpha * (1 - pul) * 0.7; ctx.strokeStyle = "#7af0ff"; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(c.sx, c.sy, size * (1.4 + pul * 0.9), 0, TAU); ctx.stroke();
+    ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 1;
+  }
+}
+
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
