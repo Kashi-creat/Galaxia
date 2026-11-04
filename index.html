@@ -2,112 +2,82 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Bestfriends</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%AD%90%3C/text%3E%3C/svg%3E">
 <style>
-  :root{
-    --cyan:#7af0ff; --violet:#a07bff; --gold:#ffd27a; --ink:#eaf6ff;
-  }
+  :root{--cyan:#7af0ff;--violet:#a07bff;--gold:#ffd27a;--ink:#eaf6ff}
   *{box-sizing:border-box;margin:0;padding:0}
-  html,body{height:100%;background:#03020a;overflow:hidden;color:var(--ink);
+  html,body{height:100%;background:#02010a;overflow:hidden;color:var(--ink);
     font-family:"Trebuchet MS",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-    -webkit-tap-highlight-color:transparent;user-select:none}
-  canvas{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
-  canvas:active{cursor:grabbing}
+    -webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+  canvas{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+  #gl{z-index:0}
+  #ov{z-index:1;pointer-events:none}
 
-  .card{background:linear-gradient(160deg,rgba(30,22,60,.92),rgba(8,10,28,.94));
-    border:1px solid rgba(160,123,255,.35);border-radius:22px;padding:30px 26px 26px;
+  .card{background:linear-gradient(160deg,rgba(30,22,60,.9),rgba(8,10,28,.92));
+    border:1px solid rgba(160,123,255,.35);border-radius:22px;padding:30px 26px 24px;
     text-align:center;box-shadow:0 0 60px rgba(122,240,255,.12),0 20px 60px rgba(0,0,0,.6);
-    width:min(340px,calc(100vw - 32px))}
+    width:min(340px,calc(100vw - 32px));backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 
-  /* Intro */
-  #intro{position:fixed;inset:0;display:grid;place-items:center;z-index:5;transition:opacity 1.8s ease, transform 2.4s ease, filter 1.8s ease}
+  #intro{position:fixed;inset:0;display:grid;place-items:center;z-index:5;
+    transition:opacity 1.8s ease,transform 2.4s ease,filter 1.8s ease}
   #intro.out{opacity:0;transform:scale(1.12);filter:blur(6px);pointer-events:none}
-  #intro h1{font-size:28px;letter-spacing:.5px;margin:14px 0 6px;
+  #intro h1{font-size:30px;letter-spacing:.5px;margin:14px 0 6px;
     background:linear-gradient(90deg,var(--cyan),var(--violet),var(--gold));
     -webkit-background-clip:text;background-clip:text;color:transparent}
-  #intro .para{opacity:.8;font-size:15px;margin-bottom:22px}
+  #intro .para{opacity:.8;font-size:15px;margin-bottom:18px}
   .planet{width:86px;height:86px;margin:4px auto 0;position:relative;animation:float 4s ease-in-out infinite}
   .planet::before{content:"";position:absolute;inset:14px;border-radius:50%;
     background:radial-gradient(circle at 35% 30%,#fff6d8,#ffd27a 30%,#b77bff 75%,#4a2fa0);
     box-shadow:0 0 30px rgba(255,210,122,.45)}
   .planet .ring{position:absolute;left:-4px;right:-4px;top:36px;height:16px;border-radius:50%;
-    border:3px solid rgba(122,240,255,.85);transform:rotate(-16deg);
-    box-shadow:0 0 14px rgba(122,240,255,.6)}
-  .planet .ring::after{content:"";position:absolute;left:-3px;right:-3px;top:-3px;height:9px;
-    background:transparent;border-radius:50% 50% 0 0/100% 100% 0 0}
+    border:3px solid rgba(122,240,255,.85);transform:rotate(-16deg);box-shadow:0 0 14px rgba(122,240,255,.6)}
   @keyframes float{50%{transform:translateY(-6px)}}
 
   button{font:inherit;cursor:pointer;border:0;border-radius:999px;padding:11px 26px;font-weight:700;
     color:#120a2a;background:linear-gradient(90deg,var(--cyan),var(--gold));
-    box-shadow:0 0 22px rgba(122,240,255,.35);transition:transform .15s}
+    box-shadow:0 0 22px rgba(122,240,255,.35);transition:transform .15s,opacity .8s}
   button:active{transform:scale(.95)}
   button.ghost{background:transparent;color:var(--ink);border:1px solid rgba(234,246,255,.3);box-shadow:none}
+  #noMusic{display:none;font-size:12px;opacity:.55;color:var(--ink);text-decoration:underline;background:none;box-shadow:none;padding:6px;font-weight:400}
 
-  /* Top title */
-  #top{position:fixed;top:18px;left:0;right:0;text-align:center;z-index:2;pointer-events:none;
-    opacity:0;transform:translateY(-8px);transition:opacity 1.6s, transform 1.6s}
-  #top.on{opacity:1;transform:none}
-  #top .small{display:block;font-size:12px;letter-spacing:3px;text-transform:uppercase;opacity:.65}
-  #top .big{display:block;font-size:24px;font-weight:700;margin-top:2px;
-    background:linear-gradient(90deg,var(--cyan),var(--gold));-webkit-background-clip:text;background-clip:text;color:transparent;
-    text-shadow:0 0 30px rgba(122,240,255,.25)}
-
-  #hint{position:fixed;bottom:22px;left:0;right:0;text-align:center;font-size:14px;opacity:0;z-index:2;
-    pointer-events:none;transition:opacity 1.2s}
-  #hint.on{opacity:.85}
-  #hint span{background:rgba(10,8,30,.6);border:1px solid rgba(160,123,255,.3);padding:8px 16px;border-radius:999px}
-
-  #msgBtn{position:fixed;right:16px;bottom:16px;width:50px;height:50px;padding:0;font-size:22px;z-index:3;
-    opacity:0;pointer-events:none;transition:opacity 1s}
-  #msgBtn.on{opacity:1;pointer-events:auto}
-
-  /* Reproductor */
-  #musicBtn{position:fixed;left:16px;bottom:16px;width:50px;height:50px;padding:0;font-size:22px;z-index:4;
-    opacity:0;pointer-events:none;transition:opacity 1s}
-  #musicBtn.on{opacity:1;pointer-events:auto}
-  #musicBtn.playing{animation:spin 4s linear infinite}
-  @keyframes spin{to{transform:rotate(360deg)}}
-  #player{position:fixed;left:16px;bottom:78px;z-index:4;width:min(330px,calc(100vw - 32px));
-    padding:18px 18px 14px;text-align:left;opacity:0;transform:translateY(12px);pointer-events:none;transition:opacity .3s,transform .3s}
-  #player.open{opacity:1;transform:none;pointer-events:auto}
-  #player .now{font-size:11px;letter-spacing:2px;text-transform:uppercase;opacity:.6}
-  #pTitle{font-size:17px;font-weight:700;margin:3px 0 1px;color:var(--gold);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  #pArtist{font-size:13px;opacity:.7;min-height:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  #pBar{width:100%;margin:12px 0 2px;accent-color:#7af0ff;height:18px;cursor:pointer}
-  .times{display:flex;justify-content:space-between;font-size:11px;opacity:.6;font-variant-numeric:tabular-nums}
-  .ctrl{display:flex;justify-content:center;align-items:center;gap:10px;margin:8px 0 10px}
-  .ctrl button{width:42px;height:42px;padding:0;font-size:17px;background:rgba(234,246,255,.08);color:var(--ink);box-shadow:none}
-  .ctrl button.big{width:54px;height:54px;font-size:22px;color:#120a2a;background:linear-gradient(90deg,var(--cyan),var(--gold));box-shadow:0 0 18px rgba(122,240,255,.35)}
-  .ctrl button.act{color:var(--cyan);background:rgba(122,240,255,.18)}
-  .vol{display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:10px}
-  .vol input{flex:1;accent-color:#ffd27a}
-  #pList{list-style:none;max-height:min(190px,28vh);overflow-y:auto;border-top:1px solid rgba(234,246,255,.12);padding-top:6px}
-  #pList li{display:flex;gap:10px;align-items:center;padding:8px 8px;border-radius:10px;cursor:pointer;font-size:14px}
-  #pList li:hover{background:rgba(234,246,255,.06)}
-  #pList li.cur{background:rgba(122,240,255,.12);color:var(--cyan)}
-  #pList li .n{width:18px;opacity:.5;font-size:12px;text-align:right}
   /* Spotify */
   #spotSlot{display:none;height:152px;margin:4px 0 10px}
   #spotHint{display:none;font-size:14px;color:var(--cyan);margin-bottom:10px;animation:float 2s ease-in-out infinite}
-  #noMusic{display:none;font-size:12px;opacity:.55;color:var(--ink);text-decoration:underline;cursor:pointer;background:none;border:0;box-shadow:none;padding:4px}
   body.spotify #spotSlot,body.spotify #spotHint{display:block}
   body.spotify #noMusic{display:inline-block}
   body.spotify #go{display:none}
-  #spotBox{position:fixed;z-index:7;display:none;border-radius:14px;overflow:hidden;background:#121212;
-    box-shadow:0 0 30px rgba(122,240,255,.18)}
+  #spotBox{position:fixed;z-index:7;display:none;border-radius:14px;overflow:hidden;background:#121212;box-shadow:0 0 30px rgba(122,240,255,.18)}
   #spotBox iframe{display:block;width:100%!important;height:100%!important;border:0}
   #spotBox.intro{display:block;transition:opacity 1.4s ease}
   #spotBox.intro.fade{opacity:0;pointer-events:none}
   #spotBox.panel{display:block;z-index:4;left:16px;bottom:78px;width:min(330px,calc(100vw - 32px));height:min(420px,62vh);
     opacity:0;transform:translateY(12px);pointer-events:none;transition:opacity .35s,transform .35s}
   #spotBox.panel.open{opacity:1;transform:none;pointer-events:auto}
-  #musicBtn.pulse{animation:pulse 1.6s ease-in-out infinite}
-  @keyframes pulse{50%{box-shadow:0 0 0 10px rgba(122,240,255,.15),0 0 26px rgba(122,240,255,.6)}}
-  #pList li .t{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-  /* Mensajes */
+  #top{position:fixed;top:calc(16px + env(safe-area-inset-top));left:0;right:0;text-align:center;z-index:2;pointer-events:none;
+    opacity:0;transform:translateY(-8px);transition:opacity 1.6s,transform 1.6s}
+  #top.on{opacity:1;transform:none}
+  #top .small{display:block;font-size:12px;letter-spacing:3px;text-transform:uppercase;opacity:.65}
+  #top .big{display:block;font-size:24px;font-weight:700;margin-top:2px;
+    background:linear-gradient(90deg,var(--cyan),var(--gold));-webkit-background-clip:text;background-clip:text;color:transparent}
+
+  #hint{position:fixed;bottom:calc(22px + env(safe-area-inset-bottom));left:0;right:0;text-align:center;font-size:14px;opacity:0;z-index:2;
+    pointer-events:none;transition:opacity 1.2s}
+  #hint.on{opacity:.9}
+  #hint span{background:rgba(10,8,30,.6);border:1px solid rgba(160,123,255,.3);padding:8px 16px;border-radius:999px}
+
+  .fab{position:fixed;bottom:calc(16px + env(safe-area-inset-bottom));width:50px;height:50px;padding:0;font-size:22px;z-index:3;
+    opacity:0;pointer-events:none;transition:opacity 1s}
+  .fab.on{opacity:1;pointer-events:auto}
+  .fab{white-space:nowrap}
+  #msgBtn{right:16px}
+  #musicBtn{left:16px}
+  #giftBtn{left:50%;transform:translateX(-50%);width:auto;padding:0 20px;font-size:15px;animation:glow 1.8s ease-in-out infinite}
+  #giftBtn:active{transform:translateX(-50%) scale(.95)}
+  @keyframes glow{50%{box-shadow:0 0 0 8px rgba(255,210,122,.12),0 0 34px rgba(255,210,122,.7)}}
+
   #msg{position:fixed;inset:0;display:grid;place-items:center;z-index:6;background:rgba(3,2,10,.45);
     backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);opacity:0;pointer-events:none;transition:opacity .4s}
   #msg.on{opacity:1;pointer-events:auto}
@@ -121,10 +91,24 @@
   .dots{display:flex;gap:6px;justify-content:center;margin-top:16px}
   .dots i{width:7px;height:7px;border-radius:50%;background:rgba(234,246,255,.25)}
   .dots i.on{background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
+  .dots i.seen{background:rgba(122,240,255,.5)}
+
+  #finalText{position:fixed;left:0;right:0;bottom:calc(84px + env(safe-area-inset-bottom));text-align:center;z-index:3;pointer-events:none;
+    font-size:clamp(15px,4vw,19px);font-style:italic;opacity:0;transition:opacity 2s;padding:0 24px;text-shadow:0 0 18px #000}
+  #finalText.on{opacity:.9}
+  #finalText .firma{margin-top:8px;font-size:.9em;color:var(--gold);opacity:.9}
+  #backBtn{left:50%;transform:translateX(-50%);width:auto;padding:0 20px;font-size:14px}
+  #backBtn:active{transform:translateX(-50%) scale(.95)}
+  #bbText{position:fixed;left:0;right:0;top:62%;text-align:center;z-index:3;pointer-events:none;padding:0 24px;
+    font-family:Georgia,serif;font-style:italic;font-size:clamp(18px,5vw,26px);letter-spacing:.5px;color:#f4ecff;
+    opacity:0;filter:blur(6px);transition:opacity 1.4s ease,filter 1.4s ease;text-shadow:0 0 24px rgba(160,123,255,.7)}
+  #bbText.on{opacity:.92;filter:none}
+  #nogl{position:fixed;inset:0;display:none;place-items:center;text-align:center;padding:30px;z-index:9}
 </style>
 </head>
 <body>
-<canvas id="c"></canvas>
+<canvas id="gl"></canvas>
+<canvas id="ov"></canvas>
 
 <div id="intro">
   <div class="card">
@@ -137,28 +121,16 @@
     <button id="noMusic">o entrar sin música</button>
   </div>
 </div>
-
-<div id="top"><span class="small">una galaxia para</span><span class="big nombre"></span></div>
-<div id="hint"><span>Tocá las estrellitas ✨</span></div>
-<button id="msgBtn" title="Mensajes">✉️</button>
-<button id="musicBtn" class="ghost" title="Música">🎵</button>
-<div id="player" class="card">
-  <div class="now">Sonando ahora</div>
-  <div id="pTitle">—</div>
-  <div id="pArtist"></div>
-  <input id="pBar" type="range" min="0" max="1000" value="0">
-  <div class="times"><span id="pCur">0:00</span><span id="pDur">0:00</span></div>
-  <div class="ctrl">
-    <button id="pShuf" title="Aleatorio">🔀</button>
-    <button id="pPrev" title="Anterior">⏮</button>
-    <button id="pPlay" class="big" title="Pausa">⏸</button>
-    <button id="pNext" title="Siguiente">⏭</button>
-    <button id="pRep" title="Repetir canción">🔂</button>
-  </div>
-  <div class="vol">🔈<input id="pVol" type="range" min="0" max="100">🔊</div>
-  <ul id="pList"></ul>
-</div>
 <div id="spotBox"><div id="spotEmbed"></div></div>
+
+<div id="top"><span class="small">una galaxia para</span><span class="big" id="topName"></span></div>
+<div id="hint"><span>Tocá las estrellitas ✨</span></div>
+<button id="msgBtn" class="fab" title="Mensajes">✉️</button>
+<button id="musicBtn" class="fab ghost" title="Música">🎵</button>
+<button id="giftBtn" class="fab">🎁 Sorpresa</button>
+<button id="backBtn" class="fab ghost">Volver a la galaxia ✨</button>
+<div id="finalText"></div>
+<div id="bbText"></div>
 
 <div id="msg">
   <div class="card">
@@ -173,26 +145,21 @@
     <div class="dots" id="mDots"></div>
   </div>
 </div>
+<div id="nogl"><p>Tu navegador no puede mostrar la galaxia 3D 😢<br>Probá abrirla en Chrome o Safari actualizados.</p></div>
 
 <script>
 /* =========================================================
    ✏️  EDITÁ ACÁ  ✏️
    ========================================================= */
 const CONFIG = {
-  nombre: "Mi mejor amiga",      // <- poné el nombre de tu amiga
-  firma:  "",                    // <- ej: "— Tu amigo de siempre" (si lo dejás vacío no aparece)
-  // 🎵 SPOTIFY: pegá acá el link de la playlist (si lo dejás vacío "" usa los mp3 de abajo)
+  nombre: "Caterine",            // <- el nombre de tu amiga (se forma con estrellas en la sorpresa)
+  titulo: "mi mejor amiga",      // <- lo que dice arriba en la galaxia: "una galaxia para ..."
+  firma:  "— Con cariño, Kashi 🌟",                    // <- ej: "— Tu amigo de siempre" (aparece en el último mensaje y en la sorpresa)
+
+  // 🎵 SPOTIFY: link de la playlist. La galaxia arranca cuando ella le da play.
+  // Si lo dejás vacío "", aparece un botón "Iniciar" sin música.
   spotify: "https://open.spotify.com/playlist/2MY2ljio24Y6vkBCtLPZI4?si=aa93997dc6244e01",
 
-  // 🎵 PLAYLIST con mp3 (solo se usa si spotify está vacío): poné los .mp3 en la misma carpeta que este archivo.
-  // Podés agregar todas las que quieras, una por línea (con coma al final).
-  // archivo = nombre exacto del mp3 · titulo y artista = lo que se muestra
-  canciones: [
-    { archivo: "cancion1.mp3", titulo: "Canción 1", artista: "Artista" },
-    { archivo: "cancion2.mp3", titulo: "Canción 2", artista: "Artista" },
-    { archivo: "cancion3.mp3", titulo: "Canción 3", artista: "Artista" },
-  ],
-  volumen: 0.7,                  // de 0 a 1
   frases: [                      // frases que giran en la galaxia
     "MEJOR AMIGA ★",
     "TE QUIERO MUCHO",
@@ -204,528 +171,961 @@ const CONFIG = {
     "MI CÓMPLICE DE RISAS",
     "BEST FRIENDS ★"
   ],
+
   mensajes: [                    // lo que aparece al tocar las estrellitas
     { emoji:"🌟", titulo:"Mejor amiga",
       texto:"De todas las personas del universo, qué suerte que me tocaste vos como amiga." },
     { emoji:"🫂", titulo:"Gracias",
-      texto:"Por bancarme, por las charlas eternas y por estar siempre, incluso cuando no hace falta decir nada." },
+      texto:"Por bancarme, por las charlas eternas y por estar siempre, en mis mejores y en mis peores momentos." },
     { emoji:"😂", titulo:"Cómplices",
       texto:"Las mejores risas y los peores chistes los compartí con vos. Que no se terminen nunca." },
     { emoji:"🪐", titulo:"Pase lo que pase",
       texto:"Acá vas a tener siempre a alguien que te banca. Eso no cambia nunca." },
     { emoji:"✨", titulo:"Te quiero mucho, amiga",
       texto:"Sos como la hermana que elegí. Esta galaxia es toda tuya." }
-  ]
+  ],
+
+  // 💥 BIG BANG: la frase que aparece en la oscuridad antes de la explosión
+  bigbang: "Todo empezó con una chispa…",
+
+  // 🎁 SORPRESA FINAL: las estrellas forman el nombre y esta frase
+  sorpresa: {
+    frase: "gracias por estar siempre",   // va debajo del nombre, hecha de estrellas
+    texto: "Toda esta galaxia existe porque vos existís ✨"   // aparece abajo, en letra chiquita
+  }
 };
 /* ========================================================= */
 
+const $ = id => document.getElementById(id);
 const qp = new URLSearchParams(location.search);
 if (qp.get("para")) CONFIG.nombre = qp.get("para");
 document.querySelectorAll(".nombre").forEach(e => e.textContent = CONFIG.nombre);
+$("bbText").textContent = CONFIG.bigbang || "";
+$("topName").textContent = CONFIG.titulo || CONFIG.nombre;
 
-const cv = document.getElementById("c"), ctx = cv.getContext("2d");
-const TAU = Math.PI * 2;
-let W, H, DPR, S, CX, CY;
-const R = 420, ARMS = 3, STAR_Y = 250, F = 700, D = 900;
-
-/* ---------- cámara ---------- */
-let yaw = 0, pitch = 0.55, zoom = 1, yawVel = 0;
-let cY, sY, cP, sP;
-const P = [0, 0, 0];
-function proj(x, y, z) {
-  const x1 = x * cY - z * sY, z1 = x * sY + z * cY;
-  const y2 = y * cP + z1 * sP, z2 = -y * sP + z1 * cP;
-  const d = D + z2, k = F / d * S * zoom;
-  P[0] = CX + x1 * k; P[1] = CY - y2 * k; P[2] = k;
-  return d;
-}
-
-/* ---------- utilidades ---------- */
-const rnd = Math.random;
-const g = () => (rnd() + rnd() + rnd() - 1.5) * 1.15;
+const TAU = Math.PI * 2, rnd = Math.random;
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const lerp = (a, b, t) => a + (b - a) * t;
 const easeIO = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-const easeO = t => 1 - Math.pow(1 - t, 3);
 const smooth = (a, b, t) => { t = clamp((t - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const gauss = () => (rnd() + rnd() + rnd() + rnd() - 2) * 0.87;
 
-const COLS = [
-  "rgba(255,250,240,0.9)",  // 0 blanco núcleo
-  "rgba(120,240,255,0.8)",  // 1 cian
-  "rgba(110,170,255,0.75)", // 2 azul
-  "rgba(160,120,255,0.75)", // 3 violeta
-  "rgba(215,165,255,0.6)",  // 4 lila
-  "rgba(255,214,120,0.9)",  // 5 dorado
-  "rgba(255,196,90,0.85)",  // 6 dorado cálido (estrella)
-  "rgba(255,245,220,0.9)",  // 7 blanco cálido (estrella)
-  "rgba(150,240,255,0.75)"  // 8 cian (estrella)
-];
+/* =========================================================
+   WebGL
+   ========================================================= */
+const glc = $("gl"), ov = $("ov"), o2 = ov.getContext("2d");
+const gl = glc.getContext("webgl", { antialias: false, alpha: false, premultipliedAlpha: false, powerPreference: "high-performance" });
+if (!gl) { $("nogl").style.display = "grid"; throw new Error("no webgl"); }
 
-/* ---------- galaxia ---------- */
-let N, gR, gA, gY, gW, gSz, gX0, gY0, gZ0, gDel, bins;
-function genGalaxy() {
-  N = (innerWidth * innerHeight > 600000) ? 15000 : 9000;
-  gR = new Float32Array(N); gA = new Float32Array(N); gY = new Float32Array(N);
-  gW = new Float32Array(N); gSz = new Float32Array(N);
-  gX0 = new Float32Array(N); gY0 = new Float32Array(N); gZ0 = new Float32Array(N); gDel = new Float32Array(N);
-  const lists = COLS.map(() => []);
-  for (let i = 0; i < N; i++) {
-    let r, a, y; const kind = rnd();
-    if (kind < 0.8) {
-      const t = Math.pow(rnd(), 1.35);
-      r = 20 + t * R + g() * 16;
-      a = (i % ARMS) * TAU / ARMS + r * 0.0125 + g() * 0.2;
-      y = g() * (16 * (1 - t) + 4);
-    } else if (kind < 0.86) {
-      r = Math.abs(g()) * 45 + 10; a = rnd() * TAU; y = g() * 18 * (1 - r / 90);
-    } else {
-      r = rnd() * R * 1.25; a = rnd() * TAU; y = g() * 22;
-    }
-    r = Math.abs(r);
-    const tr = r / R; let cb, sz = 0.8 + rnd() * 1.3;
-    if (rnd() < 0.06) { cb = 5; sz += 0.9; }
-    else if (tr < 0.1) { cb = 0; }
-    else if (tr < 0.35) cb = 1;
-    else if (tr < 0.6) cb = rnd() < .5 ? 2 : 1;
-    else if (tr < 0.85) cb = 3;
-    else cb = 4;
-    gR[i] = r; gA[i] = a; gY[i] = y; gSz[i] = sz;
-    gW[i] = 0.04 + 0.18 * Math.exp(-r / 90);
-    // posición inicial: nube dispersa
-    const th = rnd() * TAU, ph = Math.acos(2 * rnd() - 1), rr = 350 + rnd() * 900;
-    gX0[i] = rr * Math.sin(ph) * Math.cos(th); gY0[i] = rr * Math.cos(ph) * 0.6; gZ0[i] = rr * Math.sin(ph) * Math.sin(th);
-    gDel[i] = rnd() * 1.1 + tr * 0.35;
-    lists[cb].push(i);
-  }
-  bins = lists.map(l => Int32Array.from(l));
-}
-
-/* ---------- estrella gigante ---------- */
-const SN = 2400, ROUT = 115, RIN = 48;
-const sOx = new Float32Array(SN), sOy = new Float32Array(SN), sJx = new Float32Array(SN), sJz = new Float32Array(SN),
-      sDel = new Float32Array(SN), sSz = new Float32Array(SN), sPh = new Float32Array(SN);
-let sBins;
-(function genStar() {
-  const V = [];
-  for (let j = 0; j < 10; j++) {
-    const ang = Math.PI / 2 + j * Math.PI / 5, rr = j % 2 ? RIN : ROUT;
-    V.push([Math.cos(ang) * rr, Math.sin(ang) * rr]);
-  }
-  const inside = (x, y) => {
-    let c = false;
-    for (let i = 0, j = 9; i < 10; j = i++) {
-      const [xi, yi] = V[i], [xj, yj] = V[j];
-      if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c;
-    }
-    return c;
-  };
-  const lists = COLS.map(() => []);
-  for (let i = 0; i < SN; i++) {
-    let x, y, cb;
-    if (rnd() < 0.5) {
-      const e = (rnd() * 10) | 0, t = rnd(), A = V[e], B = V[(e + 1) % 10];
-      x = A[0] + (B[0] - A[0]) * t + g() * 2.5; y = A[1] + (B[1] - A[1]) * t + g() * 2.5;
-      cb = rnd() < .6 ? 6 : 7;
-    } else {
-      do { x = (rnd() * 2 - 1) * ROUT; y = (rnd() * 2 - 1) * ROUT; } while (!inside(x, y));
-      cb = rnd() < .55 ? 6 : (rnd() < .5 ? 8 : 7);
-    }
-    sOx[i] = x; sOy[i] = y + 8;
-    sJx[i] = g() * 6; sJz[i] = g() * 6;
-    sDel[i] = rnd() * 1.6; sSz[i] = 0.9 + rnd() * 1.5; sPh[i] = rnd() * TAU;
-    lists[cb].push(i);
-  }
-  sBins = lists.map(l => Int32Array.from(l));
-})();
-
-/* chorro de partículas del centro a la estrella */
-const QN = 220, qPh = new Float32Array(QN), qJx = new Float32Array(QN), qJz = new Float32Array(QN);
-for (let i = 0; i < QN; i++) { qPh[i] = rnd(); qJx[i] = g() * 7; qJz[i] = g() * 7; }
-
-/* ---------- frases ---------- */
-const labels = CONFIG.frases.map((txt, i) => ({
-  txt, r: 150 + (i % 3) * 85 + rnd() * 30, a: i * TAU / CONFIG.frases.length * 2.0 + rnd() * .4,
-  y: 6, hue: i % 2 ? "#bff8ff" : "#ffe7b0"
-}));
-labels.forEach(l => l.w = 0.04 + 0.18 * Math.exp(-l.r / 90));
-
-/* ---------- estrellitas tocables ---------- */
-const clickStars = Array.from({ length: 6 }, (_, i) => ({
-  r: 140 + rnd() * 250, a: i * TAU / 6 + rnd() * .6, y: 35 + rnd() * 40, ph: rnd() * TAU, sx: -999, sy: -999, hit: 0
-}));
-clickStars.forEach(c => c.w = 0.04 + 0.18 * Math.exp(-c.r / 90));
-
-/* ---------- fondo ---------- */
-const bg = document.createElement("canvas"), bgx = bg.getContext("2d");
-let twinkles = [];
-function renderBg() {
-  bg.width = W * DPR; bg.height = H * DPR; bgx.setTransform(DPR, 0, 0, DPR, 0, 0);
-  const gr = bgx.createRadialGradient(W / 2, H * .55, 0, W / 2, H * .55, Math.max(W, H) * .8);
-  gr.addColorStop(0, "#0c0a22"); gr.addColorStop(1, "#020108");
-  bgx.fillStyle = gr; bgx.fillRect(0, 0, W, H);
-  const blobs = [["rgba(120,80,255,0.10)", .2, .25, .5], ["rgba(60,220,255,0.07)", .85, .7, .55], ["rgba(255,200,120,0.05)", .6, .15, .35]];
-  for (const [c, x, y, r] of blobs) {
-    const b = bgx.createRadialGradient(W * x, H * y, 0, W * x, H * y, Math.max(W, H) * r);
-    b.addColorStop(0, c); b.addColorStop(1, "rgba(0,0,0,0)"); bgx.fillStyle = b; bgx.fillRect(0, 0, W, H);
-  }
-  for (let i = 0; i < (W * H) / 2500; i++) {
-    bgx.fillStyle = `rgba(255,255,255,${(rnd() * .5 + .1).toFixed(2)})`;
-    const s = rnd() < .9 ? .8 : 1.5; bgx.fillRect(rnd() * W, rnd() * H, s, s);
-  }
-  twinkles = Array.from({ length: 70 }, () => ({ x: rnd() * W, y: rnd() * H, p: rnd() * TAU, s: .8 + rnd() * 1.6 }));
-}
-
-function glowSprite(rgb) {
-  const c = document.createElement("canvas"); c.width = c.height = 128; const x = c.getContext("2d");
-  const gr = x.createRadialGradient(64, 64, 0, 64, 64, 64);
-  gr.addColorStop(0, `rgba(${rgb},0.9)`); gr.addColorStop(.25, `rgba(${rgb},0.35)`); gr.addColorStop(1, `rgba(${rgb},0)`);
-  x.fillStyle = gr; x.fillRect(0, 0, 128, 128); return c;
-}
-const glowCyan = glowSprite("120,230,255"), glowGold = glowSprite("255,205,110"), glowViolet = glowSprite("150,110,255");
-
+let W, H, DPR, PORT, FOCAL;
+const FOV = 55 * Math.PI / 180;
 function resize() {
   DPR = Math.min(devicePixelRatio || 1, 2);
-  W = Math.max(1, innerWidth || document.documentElement.clientWidth || 1);
-  H = Math.max(1, innerHeight || document.documentElement.clientHeight || 1);
-  cv.width = W * DPR; cv.height = H * DPR;
-  S = Math.min(W / (W < H ? 600 : 700), H / 760);
-  CX = W / 2; CY = H * (W < H ? 0.6 : 0.62);
-  renderBg();
+  W = Math.max(1, innerWidth); H = Math.max(1, innerHeight); PORT = H > W;
+  glc.width = ov.width = Math.round(W * DPR); glc.height = ov.height = Math.round(H * DPR);
+  gl.viewport(0, 0, glc.width, glc.height);
+  FOCAL = (H / 2) / Math.tan(FOV / 2);
 }
-addEventListener("resize", resize);
-resize(); genGalaxy();
+addEventListener("resize", resize); resize();
+
+function shader(type, src) {
+  const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+  return s;
+}
+function program(vs, fs) {
+  const p = gl.createProgram();
+  gl.attachShader(p, shader(gl.VERTEX_SHADER, vs)); gl.attachShader(p, shader(gl.FRAGMENT_SHADER, fs));
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+  const info = { p, a: {}, u: {} };
+  for (let i = 0; i < gl.getProgramParameter(p, gl.ACTIVE_ATTRIBUTES); i++) { const n = gl.getActiveAttrib(p, i).name; info.a[n] = gl.getAttribLocation(p, n); }
+  for (let i = 0; i < gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS); i++) { const n = gl.getActiveUniform(p, i).name; info.u[n] = gl.getUniformLocation(p, n); }
+  return info;
+}
+function buffer(data, dynamic) {
+  const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b);
+  gl.bufferData(gl.ARRAY_BUFFER, data, dynamic ? gl.DYNAMIC_DRAW : gl.STATIC_DRAW); return b;
+}
+function attr(prog, name, buf, size) {
+  const loc = prog.a[name]; if (loc === undefined || loc < 0) return;
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.enableVertexAttribArray(loc);
+  gl.vertexAttribPointer(loc, size, gl.FLOAT, false, 0, 0);
+}
+function disableAttrs(prog) { for (const k in prog.a) if (prog.a[k] >= 0) gl.disableVertexAttribArray(prog.a[k]); }
+
+/* ---------- matrices ---------- */
+const VIEW = new Float32Array(16), PROJ = new Float32Array(16);
+function perspective(out, fovy, aspect, near, far) {
+  const f = 1 / Math.tan(fovy / 2), nf = 1 / (near - far); out.fill(0);
+  out[0] = f / aspect; out[5] = f; out[10] = (far + near) * nf; out[11] = -1; out[14] = 2 * far * near * nf;
+}
+function lookAt(out, e, c) {
+  let zx = e[0] - c[0], zy = e[1] - c[1], zz = e[2] - c[2], l = Math.hypot(zx, zy, zz); zx /= l; zy /= l; zz /= l;
+  let xx = zz, xy = 0, xz = -zx; l = Math.hypot(xx, xz) || 1; xx /= l; xz /= l;       // up = (0,1,0)
+  const yx = zy * xz - zz * xy, yy = zz * xx - zx * xz, yz = zx * xy - zy * xx;
+  out[0] = xx; out[1] = yx; out[2] = zx; out[3] = 0; out[4] = xy; out[5] = yy; out[6] = zy; out[7] = 0;
+  out[8] = xz; out[9] = yz; out[10] = zz; out[11] = 0;
+  out[12] = -(xx * e[0] + xy * e[1] + xz * e[2]); out[13] = -(yx * e[0] + yy * e[1] + yz * e[2]);
+  out[14] = -(zx * e[0] + zy * e[1] + zz * e[2]); out[15] = 1;
+}
+// proyecta a pantalla (px CSS). devuelve false si está detrás
+const SP = [0, 0, 0];
+function toScreen(x, y, z) {
+  const vx = VIEW[0] * x + VIEW[4] * y + VIEW[8] * z + VIEW[12];
+  const vy = VIEW[1] * x + VIEW[5] * y + VIEW[9] * z + VIEW[13];
+  const vz = VIEW[2] * x + VIEW[6] * y + VIEW[10] * z + VIEW[14];
+  if (vz > -1) return false;
+  const k = FOCAL / -vz;
+  SP[0] = W / 2 + vx * k; SP[1] = H / 2 - vy * k; SP[2] = k; return true;
+}
+
+/* ---------- shaders ---------- */
+const FS_POINT = `precision mediump float;
+varying vec3 vColor; varying float vAlpha;
+void main(){ vec2 c = gl_PointCoord - 0.5; float d = length(c); if (d > 0.5) discard;
+  float a = pow(1.0 - d * 2.0, 1.7) + 0.5 * pow(1.0 - d * 2.0, 6.0);
+  gl_FragColor = vec4(vColor * a * vAlpha, 1.0); }`;
+
+const GALAXY = program(`
+attribute vec3 aGal; attribute vec3 aStart; attribute vec3 aTarget; attribute vec3 aColor; attribute vec2 aMisc;
+uniform mat4 uView, uProj; uniform float uTime, uForm, uMorph, uSize, uFade, uBang, uHeat, uSuck, uCharge, uMaxPt;
+varying vec3 vColor; varying float vAlpha;
+void main(){
+  float r = aGal.x, rnd = aMisc.y;
+  float sp = 0.045 + 0.25 * exp(-r / 6.0);
+  float ang = aGal.y + uTime * sp;
+  vec3 g = vec3(cos(ang) * r, aGal.z, sin(ang) * r);
+  float e = clamp(uForm * 1.6 - rnd * 0.6, 0.0, 1.0); e = e * e * (3.0 - 2.0 * e);
+  // big bang: salen todas del centro (las rápidas primero) y después se arremolinan
+  float bk = clamp(uBang * (0.75 + rnd * 0.5), 0.0, 1.0);
+  vec3 boom = aStart * 0.55 * (1.0 - pow(1.0 - bk, 3.0));
+  float sw = (1.0 - e) * (2.2 + rnd * 1.5) * uForm;
+  float cs = cos(sw), sn = sin(sw);
+  boom = vec3(boom.x * cs - boom.z * sn, boom.y * (1.0 - 0.6 * uForm), boom.x * sn + boom.z * cs);
+  vec3 p = mix(boom, g, e);
+  // el agujero negro devora todo: espiral hacia el centro (las de adentro primero)
+  float sk = clamp(uSuck * 1.4 - rnd * 0.2 - min(length(p.xz) / 90.0, 1.0) * 0.25, 0.0, 1.0); sk = sk * sk;
+  float pr = length(p.xz), pa = atan(p.z, p.x) + sk * (4.0 + 26.0 / (pr + 5.0));
+  float nr = pr * (1.0 - sk);
+  p = vec3(cos(pa) * nr, p.y * (1.0 - sk), sin(pa) * nr);
+  float m = clamp(uMorph * 1.6 - rnd * 0.6, 0.0, 1.0); m = m * m * (3.0 - 2.0 * m);
+  vec3 t = aTarget + vec3(sin(uTime * 1.7 + rnd * 60.0), cos(uTime * 1.3 + rnd * 40.0), sin(uTime + rnd * 9.0)) * 0.12
+          + vec3(sin(uTime * 61.0 + rnd * 900.0), cos(uTime * 53.0 + rnd * 700.0), sin(uTime * 47.0 + rnd * 300.0)) * uCharge * 0.9;
+  float arc = sin(m * 3.14159);
+  p = mix(p, t, m) + vec3((rnd - 0.5) * 18.0, (fract(rnd * 7.31) - 0.5) * 34.0, (fract(rnd * 3.7) - 0.5) * 26.0) * arc;
+  vec4 mv = uView * vec4(p, 1.0);
+  gl_Position = uProj * mv;
+  float tw = 0.72 + 0.28 * sin(uTime * (0.8 + rnd * 3.0) + rnd * 50.0);
+  gl_PointSize = clamp(uSize * aMisc.x / -mv.z, 1.0, uMaxPt) * (1.0 + 0.35 * m) * (1.0 + 3.0 * uHeat);
+  vec3 hot = mix(vec3(1.0, 0.95, 0.85), mix(vec3(1.0, 0.6, 0.25), vec3(0.6, 0.45, 1.0), rnd), clamp(1.0 - uHeat * 1.4, 0.0, 1.0));
+  vColor = mix(aColor, hot * 1.4, uHeat);
+  vAlpha = tw * (0.6 + 0.4 * e) * (1.0 + uHeat) * uFade * smoothstep(0.0, 0.015, uBang);
+  vColor = mix(vColor, vec3(1.0, 0.72, 0.42) * 1.6, sk * 0.7 * (1.0 - m));
+  vAlpha *= 1.0 - smoothstep(0.82, 1.0, sk) * (1.0 - m);
+  vAlpha *= mix(smoothstep(4.0, 26.0, -mv.z), 1.0, max(uHeat, m));   // las que pasan muy cerca de la cámara se desvanecen
+}`, FS_POINT);
+
+const POINTS = program(`
+attribute vec3 aPos; attribute vec3 aColor; attribute vec2 aSA;
+uniform mat4 uView, uProj; uniform float uSize, uFixed;
+varying vec3 vColor; varying float vAlpha;
+void main(){
+  vec4 mv = uView * vec4(aPos, 1.0);
+  gl_Position = uProj * mv;
+  gl_PointSize = uFixed > 0.5 ? aSA.x * uSize : clamp(uSize * aSA.x / -mv.z, 0.5, 64.0);
+  vColor = aColor; vAlpha = aSA.y;
+}`, FS_POINT);
+
+// quads: brillos, nebulosas, agujero negro y disco
+const QUAD = program(`
+attribute vec2 aCorner;
+uniform mat4 uView, uProj; uniform vec3 uCenter, uAX, uAY;
+varying vec2 vUV;
+void main(){ vUV = aCorner; vec3 p = uCenter + uAX * aCorner.x + uAY * aCorner.y; gl_Position = uProj * uView * vec4(p, 1.0); }`,
+`precision mediump float;
+varying vec2 vUV; uniform float uMode, uTime, uAlpha, uSeed; uniform vec3 uColor, uColor2;
+float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float noise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y); }
+float fbm(vec2 p){ float v = 0.0, a = 0.5; for (int i = 0; i < 5; i++){ v += a * noise(p); p *= 2.03; a *= 0.5; } return v; }
+void main(){
+  float d = length(vUV);
+  if (uMode < 0.5) {                       // brillo suave
+    float a = pow(max(0.0, 1.0 - d), 2.6);
+    gl_FragColor = vec4(uColor * a * uAlpha, 1.0);
+  } else if (uMode < 1.5) {                // agujero negro (opaco)
+    if (d > 1.0) discard;
+    gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+  } else if (uMode < 2.5) {                // disco de acreción
+    float r = d * 12.0;
+    if (r < 2.9 || d > 1.0) discard;
+    float ang = atan(vUV.y, vUV.x);
+    float sw = 0.55 + 0.45 * sin(ang * 5.0 - uTime * 2.2 + r * 1.6) * sin(ang * 3.0 + uTime * 1.3 - r);
+    float band = smoothstep(2.9, 3.6, r) * (1.0 - smoothstep(4.5, 12.0, r));
+    float hot = 1.0 - smoothstep(3.0, 6.5, r);
+    vec3 col = mix(uColor2, uColor, hot);
+    gl_FragColor = vec4(col * band * (0.35 + 0.9 * sw) * uAlpha * (1.0 + 2.5 * hot), 1.0);
+  } else {                                 // nebulosa
+    vec2 q = vUV * 1.6 + uSeed;
+    float n = fbm(q + vec2(uTime * 0.01, -uTime * 0.008));
+    float n2 = fbm(q * 2.0 - n);
+    float a = smoothstep(0.35, 0.95, n2) * pow(max(0.0, 1.0 - d), 1.6);
+    gl_FragColor = vec4(mix(uColor, uColor2, n) * a * uAlpha, 1.0);
+  }
+}`);
+const quadBuf = buffer(new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]));
+
+/* ---------- big bang (shader de pantalla completa) ---------- */
+const TB = 4.0;          // segundo en el que explota
+const OFF = TB + 2.0;    // cuándo empieza a formarse la galaxia
+const BANG = program(`
+attribute vec2 aCorner; void main(){ gl_Position = vec4(aCorner, 0.0, 1.0); }`,
+`precision highp float;
+uniform vec2 uRes, uC; uniform float uT, uPre, uTime;
+float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float noise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y); }
+float fbm(vec2 p){ float v = 0.0, a = 0.5; for (int i = 0; i < 5; i++){ v += a * noise(p); p = p * 2.07 + 3.1; a *= 0.5; } return v; }
+vec3 ramp(float h){            // blanco → dorado → naranja → magenta → violeta
+  h = clamp(h, 0.0, 1.0);
+  vec3 c = mix(vec3(0.25, 0.1, 0.55), vec3(0.9, 0.2, 0.55), smoothstep(0.0, 0.3, h));
+  c = mix(c, vec3(1.0, 0.45, 0.12), smoothstep(0.25, 0.55, h));
+  c = mix(c, vec3(1.0, 0.85, 0.4), smoothstep(0.5, 0.8, h));
+  return mix(c, vec3(1.0, 0.98, 0.94), smoothstep(0.78, 1.0, h));
+}
+void main(){
+  vec2 p = (gl_FragCoord.xy - uC) / uRes.y;
+  float r = length(p), ang = atan(p.y, p.x);
+  vec3 col = vec3(0.0);
+  float t = uT;
+  if (t < 0.0) {
+    // singularidad: un punto que late, con destello horizontal
+    float k = uPre;
+    col += vec3(1.0, 0.92, 0.85) * (0.00006 / (r * r + 0.00002)) * k;
+    col += vec3(0.6, 0.5, 1.0) * exp(-r * 18.0) * 0.35 * k;
+    col += vec3(0.55, 0.8, 1.0) * exp(-abs(p.y) * 420.0) * exp(-abs(p.x) * 3.0) * 0.8 * k;
+    col += vec3(0.8, 0.6, 1.0) * exp(-abs(p.x) * 900.0) * exp(-abs(p.y) * 9.0) * 0.25 * k;
+    // energía que es absorbida hacia el centro
+    float suck = fbm(vec2(ang * 3.0, r * 6.0 + uTime * 3.0));
+    col += vec3(0.45, 0.3, 0.9) * pow(suck, 4.0) * exp(-r * 5.0) * 0.6 * k;
+  } else {
+    // destello
+    col += vec3(1.0, 0.97, 0.92) * exp(-t * 4.5) * 1.8;
+    // onda expansiva con borde de colores
+    float R = 0.04 + t * 0.85 - t * t * 0.06, w = 0.012 + 0.035 * t, fade = exp(-t * 0.75);
+    col.r += exp(-pow((r - R * 1.015) / w, 2.0)) * fade * 1.1;
+    col.g += exp(-pow((r - R) / w, 2.0)) * fade * 0.9;
+    col.b += exp(-pow((r - R * 0.985) / w, 2.0)) * fade * 1.3;
+    col += vec3(0.5, 0.6, 1.0) * exp(-pow((r - R * 0.6) / (w * 3.0), 2.0)) * fade * 0.25;
+    // bola de fuego que se expande y se enfría
+    float rad = 0.05 + 0.2 * sqrt(t);
+    vec2 q = p / rad;
+    float n = fbm(q * 2.2 + vec2(uTime * 0.4, -uTime * 0.3) + fbm(q * 3.0 - uTime * 0.2) * 1.4);
+    float body = smoothstep(1.15, 0.0, length(q) - (n - 0.5) * 0.9);
+    float heat = exp(-t * 0.9);
+    col += ramp(body * heat * 1.25 + n * 0.15) * body * (0.25 + 0.9 * heat) * smoothstep(3.2, 0.8, t);
+    // rayos de luz
+    float rays = pow(fbm(vec2(ang * 9.0, t * 0.6)), 3.0) * 2.2;
+    col += vec3(1.0, 0.85, 0.7) * rays * exp(-r * 2.4) * exp(-t * 0.9) * 0.9;
+  }
+  gl_FragColor = vec4(col, 1.0);
+}`);
+const fullQuad = buffer(new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]));
+function drawBang(T, time) {
+  let cx = W / 2, cy = H / 2;
+  if (toScreen(0, 0, 0)) { cx = SP[0]; cy = SP[1]; }
+  const beats = [1.3, 2.25, 2.95, 3.45, 3.8];
+  let pre = smooth(.3, 1.6, T) * .55;
+  for (const b of beats) pre += 1.1 * Math.exp(-Math.pow((T - b) / .07, 2));
+  pre *= 1 + smooth(2.5, TB, T) * 1.5;
+  gl.useProgram(BANG.p);
+  gl.uniform2f(BANG.u.uRes, glc.width, glc.height);
+  gl.uniform2f(BANG.u.uC, cx * DPR, (H - cy) * DPR);
+  gl.uniform1f(BANG.u.uT, T - TB); gl.uniform1f(BANG.u.uPre, pre); gl.uniform1f(BANG.u.uTime, time);
+  gl.disable(gl.DEPTH_TEST); gl.blendFunc(gl.ONE, gl.ONE);
+  attr(BANG, "aCorner", fullQuad, 2);
+  gl.drawArrays(gl.TRIANGLES, 0, 6); disableAttrs(BANG);
+}
+
+/* ---------- agujero de gusano (shader de pantalla completa) ---------- */
+const WORM = program(`
+attribute vec2 aCorner; void main(){ gl_Position = vec4(aCorner, 0.0, 1.0); }`,
+`precision highp float;
+uniform vec2 uRes, uC; uniform float uT, uOpen, uEnd, uA, uTime;
+float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float noise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y); }
+float fbm(vec2 p){ float v = 0.0, a = 0.5; for (int i = 0; i < 5; i++){ v += a * noise(p); p = p * 2.03 + 1.7; a *= 0.5; } return v; }
+void main(){
+  vec2 p = (gl_FragCoord.xy - uC) / uRes.y;
+  float r = length(p), a = atan(p.y, p.x);
+  // viaje: cada vez más rápido
+  float travel = uT * 1.4 + uT * uT * 0.55;
+  float z = 0.32 / (r + 0.015) + travel;
+  float u = a / 6.28318 + z * 0.06 + uT * 0.05;            // giro en espiral
+  vec2 tc = vec2(u * 6.0, z * 0.9);
+  // paredes del túnel: nubes de energía + anillos
+  float n1 = fbm(vec2(fract(u) * 12.0, z * 1.2));
+  float n2 = fbm(vec2(fract(u + 0.5) * 22.0, z * 2.6) + n1);
+  float rings = pow(0.5 + 0.5 * sin(z * 7.0 + n1 * 3.0), 6.0);
+  float streak = pow(noise(vec2(fract(u) * 70.0, z * 0.25)), 12.0) * 3.0;   // líneas de velocidad
+  vec3 c1 = vec3(0.35, 0.15, 0.95), c2 = vec3(0.2, 0.85, 1.0), c3 = vec3(1.0, 0.55, 0.85), c4 = vec3(1.0, 0.82, 0.45);
+  vec3 col = mix(c1, c2, smoothstep(0.3, 0.75, n2));
+  col = mix(col, c3, smoothstep(0.55, 0.9, n1) * 0.6);
+  col *= 0.35 + 1.4 * n2 * n2;
+  col += c2 * rings * 0.5 + c4 * streak;
+  col *= smoothstep(0.0, 0.22, r);                         // lo más lejano es oscuro
+  col *= 1.0 + 0.6 * smoothstep(0.3, 0.9, r);              // lo más cercano brilla
+  // la luz al final del túnel
+  float L = 0.02 + uEnd * uEnd * 2.2;
+  col += vec3(1.0, 0.97, 0.92) * (exp(-r / L) * (0.6 + 3.5 * uEnd) + uEnd * uEnd * uEnd * 1.5);
+  col += vec3(0.7, 0.85, 1.0) * exp(-r * 30.0) * 0.8;
+  // se abre desde el centro del agujero negro
+  float m = 1.0 - smoothstep(uOpen - 0.06, uOpen, r);
+  float edge = exp(-pow((r - uOpen) / 0.025, 2.0)) * step(uOpen, 1.9);
+  col += vec3(0.6, 0.9, 1.0) * edge * 1.5;
+  gl_FragColor = vec4(col, clamp(m + edge, 0.0, 1.0) * uA);
+}`);
+function drawWorm(s, time) {
+  let cx = W / 2, cy = H / 2;
+  if (s < 6.5 && toScreen(0, 0, 0)) { cx = SP[0]; cy = SP[1]; }
+  const open = smooth(4.0, 5.8, s) * 2.0;
+  gl.useProgram(WORM.p);
+  gl.uniform2f(WORM.u.uRes, glc.width, glc.height);
+  gl.uniform2f(WORM.u.uC, cx * DPR, (H - cy) * DPR);
+  gl.uniform1f(WORM.u.uT, Math.max(0, s - 4.0)); gl.uniform1f(WORM.u.uOpen, open);
+  gl.uniform1f(WORM.u.uEnd, smooth(8.2, 9.8, s)); gl.uniform1f(WORM.u.uA, 1 - smooth(9.9, 10.8, s));
+  gl.uniform1f(WORM.u.uTime, time);
+  gl.disable(gl.DEPTH_TEST); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  attr(WORM, "aCorner", fullQuad, 2);
+  gl.drawArrays(gl.TRIANGLES, 0, 6); disableAttrs(WORM);
+  gl.blendFunc(gl.ONE, gl.ONE);
+}
+
+/* ---------- hiperespacio (shader de pantalla completa) ---------- */
+const WARP = program(`
+attribute vec2 aCorner; void main(){ gl_Position = vec4(aCorner, 0.0, 1.0); }`,
+`precision highp float;
+uniform vec2 uRes; uniform float uH, uStretch, uCover, uFlash, uCharge;
+float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+void main(){
+  vec2 p = (gl_FragCoord.xy - 0.5 * uRes) / uRes.y;
+  float r = length(p), a = atan(p.y, p.x) / 6.28318 + 0.5;
+  vec3 col = vec3(0.0);
+  for (int i = 0; i < 4; i++) {
+    float fi = float(i);
+    float cells = 140.0 + fi * 70.0;
+    float ac = a * cells + fi * 0.37;
+    float id = floor(ac), f = fract(ac) - 0.5;
+    float h = hash(vec2(id, fi * 17.0)), h2 = hash(vec2(id * 1.7, fi + 3.0));
+    float speed = 0.25 + uStretch * (1.6 + h);
+    float ph = fract(h2 * 7.0 + uH * speed);
+    float R = ph * ph * 1.9;                                   // perspectiva: acelera hacia afuera
+    float len = 0.004 + uStretch * (0.08 + 0.55 * ph * ph);
+    float d = R - r;
+    float along = smoothstep(len, 0.0, d) * step(0.0, d) * smoothstep(0.0, 0.006, d + 0.006);
+    float w = 0.06 + 0.12 * (1.0 - uStretch);
+    float across = exp(-pow(f / w, 2.0));
+    vec3 tint = mix(vec3(1.0), mix(vec3(0.45, 0.85, 1.0), vec3(0.7, 0.5, 1.0), h), 0.55 * smoothstep(0.2, 1.0, d / max(len, 0.001)));
+    col += tint * along * across * (0.35 + ph) * step(0.35, h2 + uStretch);
+  }
+  // energía azul en el centro (carga y túnel)
+  col += vec3(0.35, 0.6, 1.0) * exp(-r * 5.0) * (uCharge * 0.9 + uStretch * 0.7);
+  col += vec3(0.8, 0.9, 1.0) * exp(-r * 40.0) * (uCharge + uStretch) * 0.8;
+  col *= 1.0 + 0.4 * uStretch * smoothstep(0.2, 0.9, r);
+  col += vec3(0.92, 0.96, 1.0) * uFlash;
+  float alpha = clamp(uCover + length(col) * 0.6, 0.0, 1.0);
+  gl_FragColor = vec4(col + vec3(0.01, 0.01, 0.04) * uCover, alpha);
+}`);
+function drawWarp(h, time) {
+  gl.useProgram(WARP.p);
+  gl.uniform2f(WARP.u.uRes, glc.width, glc.height);
+  gl.uniform1f(WARP.u.uH, h);
+  gl.uniform1f(WARP.u.uCharge, smooth(0, 1.2, h) * (1 - smooth(1.4, 2.0, h)));
+  gl.uniform1f(WARP.u.uStretch, smooth(0.8, 2.2, h) * (1 - smooth(3.1, 3.7, h)));
+  gl.uniform1f(WARP.u.uCover, .95 * smooth(1.0, 1.7, h) * (1 - smooth(3.3, 4.3, h)));
+  gl.uniform1f(WARP.u.uFlash, .9 * Math.exp(-Math.pow((h - 3.6) / .16, 2)));
+  gl.disable(gl.DEPTH_TEST); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  attr(WARP, "aCorner", fullQuad, 2);
+  gl.drawArrays(gl.TRIANGLES, 0, 6); disableAttrs(WARP);
+  gl.blendFunc(gl.ONE, gl.ONE);
+}
+
+/* =========================================================
+   Escena
+   ========================================================= */
+const R = 60;                    // radio de la galaxia
+const STAR_Y = 30, STAR_R = 13;  // estrella gigante
+
+/* ---------- galaxia ---------- */
+const NG = (W * H * DPR * DPR > 1600000) ? 70000 : 42000;
+const gGal = new Float32Array(NG * 3), gStart = new Float32Array(NG * 3), gTarget = new Float32Array(NG * 3),
+      gCol = new Float32Array(NG * 3), gMisc = new Float32Array(NG * 2);
+{
+  const ARMS = 3;
+  const cIn = [1.0, 0.86, 0.62], cMid = [0.38, 0.9, 1.0], cOut = [0.55, 0.38, 1.0], cEdge = [0.95, 0.55, 0.95], cGold = [1.0, 0.8, 0.42];
+  const mix3 = (a, b, t) => [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)];
+  for (let i = 0; i < NG; i++) {
+    let r, a, y, dim = 1, warm = false; const kind = rnd();
+    if (kind < 0.72) {                         // brazos (disco con grosor y bordes ondulados)
+      r = Math.pow(rnd(), 1.5) * R + 2;
+      const arm = (i % ARMS) * TAU / ARMS;
+      const spread = Math.pow(rnd(), 2.6) * (rnd() < .5 ? 1 : -1) * (0.55 + r * 0.012);
+      a = arm + r * 0.105 + spread;
+      r += Math.pow(rnd(), 3) * (rnd() < .5 ? 1 : -1) * r * 0.25;
+      y = gauss() * (4.2 * Math.exp(-r / 20) + 1.1) + Math.sin(a * 2 + 0.6) * r * r * 0.0011;
+    } else if (kind < 0.86) {                  // bulbo central (esférico)
+      const th = rnd() * TAU, ph = Math.acos(2 * rnd() - 1), rr = Math.pow(rnd(), 1.8) * 13 + 0.5;
+      const bx = rr * Math.sin(ph) * Math.cos(th), bz = rr * Math.sin(ph) * Math.sin(th);
+      r = Math.hypot(bx, bz); a = Math.atan2(bz, bx); y = rr * Math.cos(ph) * 0.78; dim = 0.34; warm = true;
+    } else if (kind < 0.93) {                  // halo de estrellas sueltas alrededor
+      const th = rnd() * TAU, ph = Math.acos(2 * rnd() - 1), rr = 18 + Math.pow(rnd(), .8) * 85;
+      const bx = rr * Math.sin(ph) * Math.cos(th), bz = rr * Math.sin(ph) * Math.sin(th);
+      r = Math.hypot(bx, bz); a = Math.atan2(bz, bx); y = rr * Math.cos(ph) * 0.7; dim = 0.6;
+    } else {                                   // polvo disperso en el disco
+      r = rnd() * R * 1.3; a = rnd() * TAU; y = gauss() * 5;
+    }
+    r = Math.abs(r);
+    const t = clamp(r / R, 0, 1);
+    let c = t < .25 ? mix3(cIn, cMid, t / .25) : t < .6 ? mix3(cMid, cOut, (t - .25) / .35) : mix3(cOut, cEdge, (t - .6) / .4);
+    let s = 0.6 + rnd() * 1.4;
+    if (warm) c = mix3([1, .78, .5], cIn, rnd() * .5);
+    if (rnd() < 0.05) { c = cGold; s += 1.2; }
+    if (r < 5) s += 0.5;
+    const br = (0.7 + rnd() * 0.5) * dim;
+    gGal.set([r, a, y], i * 3); gCol.set([c[0] * br, c[1] * br, c[2] * br], i * 3);
+    // inicio: una nube enorme alrededor
+    const th = rnd() * TAU, ph = Math.acos(2 * rnd() - 1), rr = 120 + rnd() * 380;
+    gStart.set([rr * Math.sin(ph) * Math.cos(th), rr * Math.cos(ph) * .7, rr * Math.sin(ph) * Math.sin(th)], i * 3);
+    gMisc.set([s, rnd()], i * 2);
+  }
+}
+const bGal = buffer(gGal), bStart = buffer(gStart), bTarget = buffer(gTarget, true), bCol = buffer(gCol), bMisc = buffer(gMisc);
+
+/* ---------- estrellas de fondo ---------- */
+const NB = 4500, bgPos = new Float32Array(NB * 3), bgCol = new Float32Array(NB * 3), bgSA = new Float32Array(NB * 2), bgPh = new Float32Array(NB);
+for (let i = 0; i < NB; i++) {
+  const th = rnd() * TAU, ph = Math.acos(2 * rnd() - 1), rr = 700 + rnd() * 200;
+  bgPos.set([rr * Math.sin(ph) * Math.cos(th), rr * Math.cos(ph), rr * Math.sin(ph) * Math.sin(th)], i * 3);
+  const w = rnd(); const c = w < .15 ? [1, .85, .7] : w < .3 ? [.7, .85, 1] : [1, 1, 1];
+  bgCol.set(c, i * 3); bgPh[i] = rnd() * TAU;
+  bgSA.set([rnd() < .93 ? 1 + rnd() * 1.4 : 2.6 + rnd() * 1.5, .3 + rnd() * .6], i * 2);
+}
+const bBgPos = buffer(bgPos), bBgCol = buffer(bgCol), bBgSA = buffer(bgSA, true);
+
+/* ---------- estrella gigante (partículas) ---------- */
+const NS = 2600, sLoc = new Float32Array(NS * 2), sJit = new Float32Array(NS * 2), sDel = new Float32Array(NS), sSz = new Float32Array(NS), sPh = new Float32Array(NS);
+const sPos = new Float32Array(NS * 3), sCol = new Float32Array(NS * 3), sSA = new Float32Array(NS * 2);
+{
+  const V = []; for (let j = 0; j < 10; j++) { const a = Math.PI / 2 + j * Math.PI / 5, rr = j % 2 ? 0.42 : 1; V.push([Math.cos(a) * rr, Math.sin(a) * rr]); }
+  const inside = (x, y) => { let c = false; for (let i = 0, j = 9; i < 10; j = i++) { const [xi, yi] = V[i], [xj, yj] = V[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
+  for (let i = 0; i < NS; i++) {
+    let x, y;
+    if (rnd() < .55) { const e = (rnd() * 10) | 0, t = rnd(), A = V[e], B = V[(e + 1) % 10]; x = A[0] + (B[0] - A[0]) * t + gauss() * .02; y = A[1] + (B[1] - A[1]) * t + gauss() * .02; }
+    else { do { x = rnd() * 2 - 1; y = rnd() * 2 - 1; } while (!inside(x, y)); }
+    sLoc.set([x, y + .08], i * 2); sJit.set([gauss() * .8, gauss() * .8], i * 2);
+    sDel[i] = rnd() * 1.6; sSz[i] = .8 + rnd() * 1.6; sPh[i] = rnd() * TAU;
+    const w = rnd(); sCol.set(w < .55 ? [1, .78, .38] : w < .8 ? [1, .95, .85] : [.55, .92, 1], i * 3);
+  }
+}
+const bSPos = buffer(sPos, true), bSCol = buffer(sCol), bSSA = buffer(sSA, true);
+
+/* ---------- chorro del centro a la estrella ---------- */
+const NQ = 260, qPh = new Float32Array(NQ), qJ = new Float32Array(NQ * 2);
+const qPos = new Float32Array(NQ * 3), qCol = new Float32Array(NQ * 3), qSA = new Float32Array(NQ * 2);
+for (let i = 0; i < NQ; i++) { qPh[i] = rnd(); qJ.set([gauss() * .6, gauss() * .6], i * 2); qCol.set(i % 3 ? [.5, .9, 1] : [1, .8, .4], i * 3); }
+const bQPos = buffer(qPos, true), bQCol = buffer(qCol), bQSA = buffer(qSA, true);
+
+/* ---------- fuegos artificiales ---------- */
+const NF = 3200, fPos = new Float32Array(NF * 3), fCol = new Float32Array(NF * 3), fSA = new Float32Array(NF * 2);
+const fVel = new Float32Array(NF * 3), fT0 = new Float32Array(NF).fill(-99), fLife = new Float32Array(NF), fOrg = new Float32Array(NF * 3);
+let fNext = 0;
+const bFPos = buffer(fPos, true), bFCol = buffer(fCol, true), bFSA = buffer(fSA, true);
+const FW_COLORS = [[1, .82, .4], [.45, .92, 1], [.7, .5, 1], [1, .6, .85], [.6, 1, .75], [1, 1, 1]];
+function firework(x, y, z, now) {
+  const col = FW_COLORS[(rnd() * FW_COLORS.length) | 0], col2 = FW_COLORS[(rnd() * FW_COLORS.length) | 0];
+  const n = 260, sp = 9 + rnd() * 7;
+  for (let k = 0; k < n; k++) {
+    const i = fNext; fNext = (fNext + 1) % NF;
+    const th = rnd() * TAU, ph = Math.acos(2 * rnd() - 1), v = sp * (.75 + rnd() * .25);
+    fVel.set([v * Math.sin(ph) * Math.cos(th), v * Math.cos(ph), v * Math.sin(ph) * Math.sin(th) * .5], i * 3);
+    fOrg.set([x, y, z], i * 3); fT0[i] = now; fLife[i] = 1.6 + rnd() * 1.2;
+    fCol.set(rnd() < .7 ? col : col2, i * 3);
+  }
+  gl.bindBuffer(gl.ARRAY_BUFFER, bFCol); gl.bufferSubData(gl.ARRAY_BUFFER, 0, fCol);
+}
+
+/* ---------- nebulosas ---------- */
+const NEB = [];
+{
+  const palette = [[[.45, .25, .9], [.15, .55, .95]], [[.1, .6, .8], [.4, .2, .8]], [[.85, .35, .75], [.35, .2, .8]], [[.95, .65, .3], [.6, .25, .7]]];
+  for (let i = 0; i < 16; i++) {
+    const a = rnd() * TAU, r = 15 + rnd() * 70, p = palette[i % palette.length];
+    NEB.push({ c: [Math.cos(a) * r, gauss() * 6, Math.sin(a) * r], s: 28 + rnd() * 40, col: p[0], col2: p[1], al: .10 + rnd() * .12, seed: rnd() * 40 });
+  }
+}
+
+/* ---------- frases (se dibujan en la capa 2D) ---------- */
+const labels = CONFIG.frases.map((txt, i) => {
+  const r = 20 + (i % 3) * 13 + rnd() * 6;
+  return { txt, r, a: i * TAU / CONFIG.frases.length + rnd() * .3, y: 1.2, hue: i % 2 ? "#c4f8ff" : "#ffe8b8", sp: 0.045 + 0.25 * Math.exp(-r / 6) };
+});
+const clickStars = Array.from({ length: 7 }, (_, i) => {
+  const r = 16 + rnd() * 40;
+  return { r, a: i * TAU / 7 + rnd() * .5, y: 5 + rnd() * 7, ph: rnd() * TAU, sp: 0.045 + 0.25 * Math.exp(-r / 6), sx: -999, sy: -999, hit: 0 };
+});
+
+/* =========================================================
+   Cámara
+   ========================================================= */
+const cam = { theta: -0.6, phi: 0.35, dist: 330, tx: 0, ty: 4, tz: 0 };
+const camGoal = () => ({ phi: PORT ? 1.1 : 1.15, dist: PORT ? 148 : 108 });
+let autoRot = true, yawVel = 0;
+function eye() {
+  return [cam.tx + cam.dist * Math.sin(cam.phi) * Math.cos(cam.theta), cam.ty + cam.dist * Math.cos(cam.phi), cam.tz + cam.dist * Math.sin(cam.phi) * Math.sin(cam.theta)];
+}
 
 /* ---------- interacción ---------- */
-const ptrs = new Map(); let downX = 0, downY = 0, moved = 0, pinch0 = 0, zoom0 = 1;
-cv.addEventListener("pointerdown", e => {
-  cv.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
-  downX = e.clientX; downY = e.clientY; moved = 0;
-  if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch0 = Math.hypot(a.x - b.x, a.y - b.y); zoom0 = zoom; }
+const ptrs = new Map(); let moved = 0, pinch0 = 0, dist0 = 0, userCtl = false;
+glc.addEventListener("pointerdown", e => {
+  glc.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); moved = 0;
+  if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch0 = Math.hypot(a.x - b.x, a.y - b.y); dist0 = cam.dist; }
+  if (spotM) spotBox.classList.remove("open");
 });
-cv.addEventListener("pointermove", e => {
+glc.addEventListener("pointermove", e => {
   const p = ptrs.get(e.pointerId); if (!p) return;
-  const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY;
-  moved += Math.abs(dx) + Math.abs(dy);
-  if (ptrs.size === 1) {
-    yawVel = dx * 0.006; yaw += dx * 0.006;
-    pitch = clamp(pitch + dy * 0.004, 0.12, 1.35);
-  } else if (ptrs.size === 2) {
-    const [a, b] = [...ptrs.values()]; zoom = clamp(zoom0 * Math.hypot(a.x - b.x, a.y - b.y) / pinch0, 0.5, 2.4);
-  }
+  const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY; moved += Math.abs(dx) + Math.abs(dy);
+  if (!userCtl) return;
+  if (ptrs.size === 1) { yawVel = dx * 0.006; cam.theta += dx * 0.006; cam.phi = clamp(cam.phi - dy * 0.005, 0.3, 1.5); }
+  else if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; cam.dist = clamp(dist0 * pinch0 / Math.hypot(a.x - b.x, a.y - b.y), 45, 260); }
 });
-const up = e => {
-  if (ptrs.size === 1 && moved < 8) tap(e.clientX, e.clientY);
-  ptrs.delete(e.pointerId);
-};
-cv.addEventListener("pointerup", up); cv.addEventListener("pointercancel", e => ptrs.delete(e.pointerId));
-cv.addEventListener("wheel", e => { e.preventDefault(); zoom = clamp(zoom * Math.exp(-e.deltaY * 0.001), 0.5, 2.4); }, { passive: false });
+glc.addEventListener("pointerup", e => { if (ptrs.size === 1 && moved < 8) tap(e.clientX, e.clientY); ptrs.delete(e.pointerId); });
+glc.addEventListener("pointercancel", e => ptrs.delete(e.pointerId));
+glc.addEventListener("wheel", e => { e.preventDefault(); if (userCtl) cam.dist = clamp(cam.dist * Math.exp(e.deltaY * 0.001), 45, 260); }, { passive: false });
 
 let starScreen = { x: -999, y: -999, r: 0 };
 function tap(x, y) {
-  if (!started || T < 5.5) return;
-  for (const c of clickStars) {
-    if (Math.hypot(x - c.sx, y - c.sy) < c.hit) { openMsg(); return; }
-  }
+  if (!userCtl) return;
+  for (const c of clickStars) if (Math.hypot(x - c.sx, y - c.sy) < c.hit) { openMsg(); return; }
   if (Math.hypot(x - starScreen.x, y - starScreen.y) < starScreen.r) openMsg();
 }
 
-/* ---------- mensajes ---------- */
-const $ = id => document.getElementById(id);
-let msgIdx = -1;
+/* =========================================================
+   Mensajes y sorpresa
+   ========================================================= */
+let msgIdx = -1; const seen = new Set();
 $("mDots").innerHTML = CONFIG.mensajes.map(() => "<i></i>").join("");
 function showMsg(i) {
-  const m = CONFIG.mensajes[i];
+  const m = CONFIG.mensajes[i]; seen.add(i);
   $("mEmoji").textContent = m.emoji; $("mTitle").textContent = m.titulo; $("mText").textContent = m.texto;
   const last = i === CONFIG.mensajes.length - 1;
   $("mFirma").textContent = last ? CONFIG.firma : ""; $("mFirma").style.display = last && CONFIG.firma ? "" : "none";
-  $("mNext").textContent = last ? "Volver a empezar ✨" : "Siguiente ✨";
-  [...$("mDots").children].forEach((d, j) => d.classList.toggle("on", j === i));
+  $("mNext").textContent = last ? "Ver sorpresa 🎁" : "Siguiente ✨";
+  [...$("mDots").children].forEach((d, j) => { d.classList.toggle("on", j === i); d.classList.toggle("seen", seen.has(j)); });
+  if (seen.size >= CONFIG.mensajes.length) $("giftBtn").classList.add("on");
 }
 function openMsg() { msgIdx = (msgIdx + 1) % CONFIG.mensajes.length; showMsg(msgIdx); $("msg").classList.add("on"); $("hint").classList.remove("on"); }
-$("mNext").onclick = () => { msgIdx = (msgIdx + 1) % CONFIG.mensajes.length; showMsg(msgIdx); };
+$("mNext").onclick = () => {
+  if (msgIdx === CONFIG.mensajes.length - 1) { $("msg").classList.remove("on"); startSurprise(); return; }
+  msgIdx++; showMsg(msgIdx);
+};
 $("mClose").onclick = () => $("msg").classList.remove("on");
 $("msg").addEventListener("click", e => { if (e.target.id === "msg") $("msg").classList.remove("on"); });
 $("msgBtn").onclick = openMsg;
+$("giftBtn").onclick = () => startSurprise();
 
-/* ---------- inicio ---------- */
-let started = false, T = 0, t0 = 0, last = performance.now(), gt = 0;
-/* ---------- música / playlist ---------- */
-const songs = CONFIG.canciones.map(c => typeof c === "string"
-  ? { archivo: c, titulo: c.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " "), artista: "" } : c);
-const audio = new Audio(); audio.preload = "metadata"; audio.volume = CONFIG.volumen;
-let song = 0, fails = 0, shuffle = false, repeat = false, seeking = false;
-const fmt = t => isFinite(t) ? Math.floor(t / 60) + ":" + String(Math.floor(t % 60)).padStart(2, "0") : "0:00";
-$("pList").innerHTML = songs.map((c, i) =>
-  `<li data-i="${i}"><span class="n">${i + 1}</span><span class="t"></span></li>`).join("");
-[...$("pList").children].forEach((li, i) => {
-  li.querySelector(".t").textContent = songs[i].titulo + (songs[i].artista ? " · " + songs[i].artista : "");
-  li.onclick = () => playSong(i);
-});
-$("pVol").value = CONFIG.volumen * 100;
-$("pVol").oninput = e => audio.volume = e.target.value / 100;
-
-function playSong(i) {
-  if (!songs.length) return;
-  song = (i + songs.length) % songs.length;
-  const c = songs[song];
-  audio.src = encodeURI(c.archivo);
-  $("pTitle").textContent = c.titulo; $("pArtist").textContent = c.artista || "";
-  [...$("pList").children].forEach((li, j) => li.classList.toggle("cur", j === song));
-  $("pList").children[song].scrollIntoView({ block: "nearest" });
-  audio.play().then(() => { fails = 0; $("musicBtn").classList.add("on"); }).catch(() => {});
-  if ("mediaSession" in navigator) navigator.mediaSession.metadata =
-    new MediaMetadata({ title: c.titulo, artist: c.artista || "", album: "Bestfriends" });
-}
-function nextSong() {
-  if (shuffle && songs.length > 1) { let n; do n = (Math.random() * songs.length) | 0; while (n === song); playSong(n); }
-  else playSong(song + 1);
-}
-function prevSong() { audio.currentTime > 3 ? audio.currentTime = 0 : playSong(song - 1); }
-function togglePlay() { audio.paused ? audio.play() : audio.pause(); }
-
-audio.addEventListener("ended", () => repeat ? (audio.currentTime = 0, audio.play()) : nextSong());
-audio.addEventListener("error", () => { if (++fails < songs.length) nextSong(); });
-audio.addEventListener("play", () => { $("pPlay").textContent = "⏸"; $("musicBtn").classList.add("playing"); });
-audio.addEventListener("pause", () => { $("pPlay").textContent = "▶"; $("musicBtn").classList.remove("playing"); });
-audio.addEventListener("loadedmetadata", () => $("pDur").textContent = fmt(audio.duration));
-audio.addEventListener("timeupdate", () => {
-  $("pCur").textContent = fmt(audio.currentTime);
-  if (!seeking && audio.duration) $("pBar").value = audio.currentTime / audio.duration * 1000;
-});
-$("pBar").addEventListener("input", () => { seeking = true; $("pCur").textContent = fmt($("pBar").value / 1000 * audio.duration); });
-$("pBar").addEventListener("change", () => { if (audio.duration) audio.currentTime = $("pBar").value / 1000 * audio.duration; seeking = false; });
-$("pPlay").onclick = togglePlay; $("pNext").onclick = nextSong; $("pPrev").onclick = prevSong;
-$("pShuf").onclick = () => $("pShuf").classList.toggle("act", shuffle = !shuffle);
-$("pRep").onclick = () => $("pRep").classList.toggle("act", repeat = !repeat);
-$("musicBtn").onclick = () => $("player").classList.toggle("open");
-cv.addEventListener("pointerdown", () => $("player").classList.remove("open"));
-if ("mediaSession" in navigator) {
-  navigator.mediaSession.setActionHandler("nexttrack", nextSong);
-  navigator.mediaSession.setActionHandler("previoustrack", prevSong);
+// posiciones del texto con estrellas
+let finalDist = 160, ringRX = 60, ringRY = 30;
+function buildTextTargets() {
+  const cw = PORT ? 900 : 1400, ch = PORT ? 900 : 640;
+  const c = document.createElement("canvas"); c.width = cw; c.height = ch; const x = c.getContext("2d");
+  x.fillStyle = "#fff"; x.textAlign = "center"; x.textBaseline = "middle";
+  const fit = (txt, max, size, weight) => { let s = size; do { x.font = `${weight} ${s}px "Trebuchet MS", Arial, sans-serif`; s -= 4; } while (x.measureText(txt).width > max && s > 20); return s + 4; };
+  const wrap = (txt, max) => { const words = txt.split(" "), lines = []; let l = ""; for (const w of words) { const t = l ? l + " " + w : w; if (x.measureText(t).width > max && l) { lines.push(l); l = w; } else l = t; } if (l) lines.push(l); return lines; };
+  const nameSize = fit(CONFIG.nombre, cw * .9, PORT ? 230 : 250, 900);
+  x.font = `900 ${nameSize}px "Trebuchet MS", Arial, sans-serif`;
+  const nameLines = wrap(CONFIG.nombre, cw * .92);
+  const fr = CONFIG.sorpresa.frase || "";
+  const frSize = Math.min(PORT ? 96 : 92, nameSize * .5);
+  x.font = `700 ${frSize}px "Trebuchet MS", Arial, sans-serif`;
+  const frLines = fr ? wrap(fr, cw * .9) : [];
+  const total = nameLines.length * nameSize * 1.05 + (frLines.length ? frSize * .6 + frLines.length * frSize * 1.15 : 0);
+  let yy = ch / 2 - total / 2;
+  x.font = `900 ${nameSize}px "Trebuchet MS", Arial, sans-serif`;
+  for (const l of nameLines) { x.fillText(l, cw / 2, yy + nameSize * .52); yy += nameSize * 1.05; }
+  yy += frSize * .6; x.font = `700 ${frSize}px "Trebuchet MS", Arial, sans-serif`;
+  for (const l of frLines) { x.fillText(l, cw / 2, yy + frSize * .55); yy += frSize * 1.15; }
+  const data = x.getImageData(0, 0, cw, ch).data, pts = [];
+  const step = 3;
+  for (let py = 0; py < ch; py += step) for (let px = 0; px < cw; px += step) if (data[(py * cw + px) * 4 + 3] > 140) pts.push([px, py]);
+  const worldW = PORT ? 62 : 120, sc = worldW / cw;
+  // tamaño real del texto, para que el anillo lo rodee sin pisarlo
+  let minX = 1e9, maxX = -1e9, minY = 1e9, maxY = -1e9;
+  for (const p of pts) { if (p[0] < minX) minX = p[0]; if (p[0] > maxX) maxX = p[0]; if (p[1] < minY) minY = p[1]; if (p[1] > maxY) maxY = p[1]; }
+  const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+  const hw = (maxX - minX) / 2 * sc, hh = (maxY - minY) / 2 * sc;
+  ringRX = hw * 1.22 + 3; ringRY = Math.max(hh * 1.75 + 4, ringRX * (PORT ? .55 : .42));
+  if (PORT) ringRY = Math.max(ringRY, ringRX * 1.05);
+  for (let i = 0; i < NG; i++) {
+    if (i % 10 < 7 && pts.length) {
+      const p = pts[(rnd() * pts.length) | 0];
+      gTarget.set([(p[0] - cx) * sc + gauss() * .12, -(p[1] - cy) * sc + gauss() * .12, gauss() * .4], i * 3);
+    } else {                                  // anillo de polvo brillante alrededor
+      const a = rnd() * TAU, k = 1 + Math.abs(gauss()) * .05 + Math.sin(a * 6) * .015;
+      gTarget.set([Math.cos(a) * ringRX * k, Math.sin(a) * ringRY * k, gauss() * 2 - 4], i * 3);
+    }
+  }
+  gl.bindBuffer(gl.ARRAY_BUFFER, bTarget); gl.bufferSubData(gl.ARRAY_BUFFER, 0, gTarget);
+  // distancia para que entre en pantalla
+  // distancia para que el anillo entero entre en pantalla (dejando lugar abajo para el texto)
+  const aspect = W / H;
+  finalDist = Math.max((ringRX * 2 * 1.12) / (2 * Math.tan(FOV / 2) * aspect), (ringRY * 2 * 1.75) / (2 * Math.tan(FOV / 2)));
 }
 
+/* estado general */
+let started = false, T0 = 0, last = performance.now(), gt = 0;
+let form = 0, morph = 0, morphGoal = 0, sceneFade = 1;
+let tween = null, fwTimer = 0, surprise = false, arrived = false, backing = false, sT0 = 0, suck = 0, sNow = 0, hyper = false, hT0 = 0;
+
+function tweenCam(to, dur, done, ease) {
+  const from = { ...cam };
+  let th = to.theta; if (th !== undefined) { while (th - from.theta > Math.PI) th -= TAU; while (th - from.theta < -Math.PI) th += TAU; }
+  const dest = { ...to }; if (th !== undefined) dest.theta = th; else delete dest.theta;
+  tween = { from, to: dest, t0: performance.now(), dur, done, ease };
+}
+
+function startSurprise() {
+  if (surprise) return;
+  surprise = true; userCtl = false; autoRot = false; yawVel = 0;
+  ["giftBtn", "msgBtn", "hint", "top"].forEach(id => $(id).classList.remove("on"));
+  $("musicBtn").classList.remove("on");
+  buildTextTargets();
+  backing = false; sT0 = performance.now();
+  // la cámara se acerca al agujero negro mientras devora todo
+  tweenCam({ phi: PORT ? 1.05 : 1.08, dist: PORT ? 105 : 78, ty: 0 }, 4.6);
+  setTimeout(() => { try { navigator.vibrate && navigator.vibrate([30, 60, 50, 50, 90, 40, 300]); } catch (e) {} }, 3800);
+  // ya dentro del agujero de gusano: la cámara se pone de frente para el nombre
+  setTimeout(() => { tween = null; cam.theta = Math.PI / 2; cam.phi = Math.PI / 2; cam.dist = finalDist; cam.ty = -ringRY * .28; }, 6500);
+  // salida del túnel: las estrellas forman el nombre
+  setTimeout(() => { if (!backing) { morphGoal = 1; fwTimer = 2.2; } }, 9500);
+  $("finalText").innerHTML = ""; $("finalText").append(CONFIG.sorpresa.texto);
+  if (CONFIG.firma) { const f = document.createElement("div"); f.className = "firma"; f.textContent = CONFIG.firma; $("finalText").append(f); }
+  setTimeout(() => { if (!backing) $("finalText").classList.add("on"); }, 14500);
+  setTimeout(() => { if (!backing) $("backBtn").classList.add("on"); }, 17000);
+}
+const easeOutBack = x => { const c1 = 1.25, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); };
+$("backBtn").onclick = () => {
+  if (hyper) return;
+  $("backBtn").classList.remove("on"); $("finalText").classList.remove("on");
+  fwTimer = 0; backing = true; hyper = true; hT0 = performance.now();
+  try { navigator.vibrate && navigator.vibrate([20, 40, 30, 40, 60, 30, 400]); } catch (e) {}
+  // detrás de las líneas de luz: la galaxia vuelve a armarse y la cámara se aleja
+  setTimeout(() => {
+    morph = 0; morphGoal = 0; suck = 0; tween = null;
+    const g = camGoal();
+    cam.theta = Math.PI / 2 - 1.1; cam.phi = g.phi; cam.ty = 4; cam.dist = g.dist * 3.2;
+    // frenada con un pequeño rebote
+    setTimeout(() => tweenCam({ dist: g.dist }, 2.4, null, easeOutBack), 1300);
+  }, 1900);
+  setTimeout(() => {
+    hyper = false; surprise = false; backing = false; userCtl = true; autoRot = true;
+    ["msgBtn", "giftBtn", "top"].forEach(id => $(id).classList.add("on"));
+    if (spotM) $("musicBtn").classList.add("on");
+  }, 5600);
+};
+
+/* =========================================================
+   Render
+   ========================================================= */
+function drawQuad(center, ax, ay, mode, color, color2, alpha, seed, time) {
+  gl.uniform3fv(QUAD.u.uCenter, center); gl.uniform3fv(QUAD.u.uAX, ax); gl.uniform3fv(QUAD.u.uAY, ay);
+  gl.uniform1f(QUAD.u.uMode, mode); gl.uniform3fv(QUAD.u.uColor, color); gl.uniform3fv(QUAD.u.uColor2, color2 || color);
+  gl.uniform1f(QUAD.u.uAlpha, alpha); gl.uniform1f(QUAD.u.uSeed, seed || 0); gl.uniform1f(QUAD.u.uTime, time);
+  gl.drawArrays(gl.TRIANGLES, 0, 6);
+}
+function drawPoints(pos, col, sa, n, size, fixed) {
+  gl.useProgram(POINTS.p);
+  gl.uniformMatrix4fv(POINTS.u.uView, false, VIEW); gl.uniformMatrix4fv(POINTS.u.uProj, false, PROJ);
+  gl.uniform1f(POINTS.u.uSize, size); gl.uniform1f(POINTS.u.uFixed, fixed ? 1 : 0);
+  attr(POINTS, "aPos", pos, 3); attr(POINTS, "aColor", col, 3); attr(POINTS, "aSA", sa, 2);
+  gl.drawArrays(gl.POINTS, 0, n); disableAttrs(POINTS);
+}
+
+let shooting = [];
+function frame(now) {
+  const rdt = Math.min(.5, (now - last) / 1000), dt = Math.min(.05, rdt); last = now;
+  const time = now / 1000;
+  if (started) { gt += dt; T0 += 0; }
+  const T = started ? (now - T0) / 1000 : 0;
+  const TG = T - OFF;   // tiempo de la galaxia (después del big bang)
+
+  /* --- animaciones --- */
+  if (started) {
+    form = clamp(TG / 5.2, 0, 1);
+    if (!tween && !surprise && !arrived) {          // llegada de la cámara
+      const k = easeIO(clamp(TG / 7.5, 0, 1)), g = camGoal();
+      cam.dist = lerp(330, g.dist, k); cam.phi = lerp(0.35, g.phi, k); cam.theta = -0.6 + k * 1.2;
+      if (TG >= 7.5) { arrived = true; if (!surprise) userCtl = true; }
+    }
+  }
+  morph += clamp(morphGoal - morph, -rdt / 4.5, rdt / 4.5);
+  sNow = surprise ? (now - sT0) / 1000 : 0;
+  if (surprise && !backing) { const x = clamp((sNow - .3) / 4.6, 0, 1); suck = x * x * x; }
+  else suck = Math.max(0, suck - rdt / 4.5);
+  sceneFade = (1 - smooth(0, .35, morph)) * (1 - smooth(.04, .45, suck));
+  if (tween) {
+    const x = clamp((now - tween.t0) / 1000 / tween.dur, 0, 1), k = (tween.ease || easeIO)(x);
+    for (const key in tween.to) cam[key] = lerp(tween.from[key], tween.to[key], k);
+    if (x >= 1) { const d = tween.done; tween = null; d && d(); }
+  } else if (userCtl && !ptrs.size) { yawVel *= .94; cam.theta += yawVel + dt * 0.06; }
+
+  if (surprise && morph > .55) {
+    fwTimer -= rdt;
+    if (fwTimer <= 0) {
+      fwTimer = .45 + rnd() * .6;
+      const ww = PORT ? 38 : 75, hh = PORT ? 60 : 32;
+      firework((rnd() * 2 - 1) * ww, (rnd() * 2 - 1) * hh, -15 - rnd() * 25, time);
+    }
+  }
+
+  /* --- matrices --- */
+  perspective(PROJ, FOV, W / H, 0.5, 3000);
+  const E = eye();
+  if (hyper) { const h = (now - hT0) / 1000, sh = 2.2 * smooth(.3, 1.2, h) * (1 - smooth(3.4, 4.0, h)); E[0] += (rnd() - .5) * sh; E[1] += (rnd() - .5) * sh; E[2] += (rnd() - .5) * sh; }
+  if (surprise && !backing && sNow > 1.5 && sNow < 6.2) { const sh = 2.6 * smooth(1.5, 4.8, sNow) * (1 - smooth(5.6, 6.2, sNow)); E[0] += (rnd() - .5) * sh; E[1] += (rnd() - .5) * sh; E[2] += (rnd() - .5) * sh; }
+  if (started && T > TB && T < TB + 2.5) { const sh = 7 * Math.exp(-(T - TB) * 2.6); E[0] += (rnd() - .5) * sh; E[1] += (rnd() - .5) * sh; E[2] += (rnd() - .5) * sh; }
+  lookAt(VIEW, E, [cam.tx, cam.ty, cam.tz]);
+  const RX = [VIEW[0], VIEW[4], VIEW[8]], UY = [VIEW[1], VIEW[5], VIEW[9]];
+  const sc = (v, s) => [v[0] * s, v[1] * s, v[2] * s];
+
+  gl.clearColor(0.008, 0.004, 0.03, 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE); gl.disable(gl.DEPTH_TEST); gl.depthMask(false);
+
+  // estrellas de fondo (titilan)
+  for (let i = 0; i < NB; i++) bgSA[i * 2 + 1] = (.25 + .35 * Math.sin(time * (0.6 + (i % 7) * .3) + bgPh[i])) + .3;
+  const bgDim = !started ? 1 : T < TB ? 1 - .85 * smooth(.3, TB - .3, T) : .15 + .85 * smooth(TB + .5, TB + 4, T);
+  if (bgDim < 1) for (let i = 0; i < NB; i++) bgSA[i * 2 + 1] *= bgDim;
+  gl.bindBuffer(gl.ARRAY_BUFFER, bBgSA); gl.bufferSubData(gl.ARRAY_BUFFER, 0, bgSA);
+  drawPoints(bBgPos, bBgCol, bBgSA, NB, DPR, true);
+
+  if (started) {
+    // nebulosas
+    gl.useProgram(QUAD.p);
+    gl.uniformMatrix4fv(QUAD.u.uView, false, VIEW); gl.uniformMatrix4fv(QUAD.u.uProj, false, PROJ);
+    attr(QUAD, "aCorner", quadBuf, 2);
+    const nebA = smooth(-1.5, 6, TG) * (0.35 + 0.65 * sceneFade);
+    for (const n of NEB) drawQuad(n.c, sc(RX, n.s), sc(UY, n.s), 3, n.col, n.col2, n.al * nebA, n.seed, time);
+    // brillo del núcleo
+    const coreA = smooth(-2, 5, TG) * sceneFade;
+    drawQuad([0, 0, 0], sc(RX, 26), sc(UY, 26), 0, [.55, .4, 1], null, .35 * coreA, 0, time);
+    drawQuad([0, 0, 0], sc(RX, 14), sc(UY, 14), 0, [1, .8, .5], null, .3 * coreA, 0, time);
+
+    // agujero negro: escribe profundidad para tapar lo que está detrás
+    gl.enable(gl.DEPTH_TEST);
+    const holeK = Math.max(sceneFade, surprise && !backing ? 1 - smooth(5.0, 5.8, sNow) : 0);
+    if (holeK > .02) {
+      gl.depthMask(true); gl.blendFunc(gl.ONE, gl.ZERO);
+      const bh = 2.6 * smooth(1.5, 3.5, TG) * holeK * (1 + suck * 2.6) + .001;
+      drawQuad([0, 0, 0], sc(RX, bh), sc(UY, bh), 1, [0, 0, 0], null, 1, 0, time);
+      gl.depthMask(false); gl.blendFunc(gl.ONE, gl.ONE);
+      // disco de acreción (en el plano de la galaxia)
+      const dA = smooth(1.8, 4.5, TG) * holeK * (1 + suck * 1.8), ds = 12 * (1 + suck * 1.5);
+      drawQuad([0, 0, 0], [ds, 0, 0], [0, 0, ds], 2, [1, .95, .85], [.4, .75, 1], dA, 0, time + suck * 6);
+      // anillo de luz alrededor del agujero (de frente a la cámara)
+      const rs = 5.2 * (1 + suck * 2.6);
+      drawQuad([0, 0, 0], sc(RX, rs), sc(UY, rs), 0, [1, .9, .75], null, .5 * dA, 0, time);
+    }
+    disableAttrs(QUAD);
+
+    // galaxia
+    gl.useProgram(GALAXY.p);
+    gl.uniformMatrix4fv(GALAXY.u.uView, false, VIEW); gl.uniformMatrix4fv(GALAXY.u.uProj, false, PROJ);
+    gl.uniform1f(GALAXY.u.uTime, gt); gl.uniform1f(GALAXY.u.uForm, form); gl.uniform1f(GALAXY.u.uMorph, morph);
+    gl.uniform1f(GALAXY.u.uSize, 230 * DPR); gl.uniform1f(GALAXY.u.uFade, 1);
+    const bx = clamp((T - TB) / 3.2, 0, 1);
+    gl.uniform1f(GALAXY.u.uBang, bx); gl.uniform1f(GALAXY.u.uSuck, suck); gl.uniform1f(GALAXY.u.uMaxPt, 7.0 * DPR); gl.uniform1f(GALAXY.u.uCharge, hyper ? smooth(0, 1, (now - hT0) / 1000) * (1 - smooth(1.6, 1.9, (now - hT0) / 1000)) : 0); gl.uniform1f(GALAXY.u.uHeat, T < TB ? 1 : Math.exp(-(T - TB) * .55));
+    attr(GALAXY, "aGal", bGal, 3); attr(GALAXY, "aStart", bStart, 3); attr(GALAXY, "aTarget", bTarget, 3);
+    attr(GALAXY, "aColor", bCol, 3); attr(GALAXY, "aMisc", bMisc, 2);
+    gl.drawArrays(gl.POINTS, 0, NG); disableAttrs(GALAXY);
+    gl.disable(gl.DEPTH_TEST);
+
+    // estrella gigante + chorro
+    const st = TG - 4.2;
+    if (st > 0 && sceneFade > .01) {
+      const spin = Math.sin(gt * .6) * .45, cs = Math.cos(spin), pulse = 1 + .04 * Math.sin(gt * 2.4);
+      for (let i = 0; i < NS; i++) {
+        const p = clamp((st - sDel[i]) / 1.8, 0, 1);
+        const rise = 1 - Math.pow(1 - clamp(p * 1.7, 0, 1), 3), spread = smooth(.45, 1, p);
+        const ox = sLoc[i * 2] * cs * STAR_R * pulse * spread, oy = sLoc[i * 2 + 1] * STAR_R * pulse * spread;
+        const jx = sJit[i * 2] * (1 - spread), jz = sJit[i * 2 + 1] * (1 - spread);
+        sPos[i * 3] = jx + RX[0] * ox + UY[0] * oy; sPos[i * 3 + 1] = STAR_Y * rise + RX[1] * ox + UY[1] * oy; sPos[i * 3 + 2] = jz + RX[2] * ox + UY[2] * oy;
+        sSA[i * 2] = sSz[i] * (1 + .25 * Math.sin(gt * 3 + sPh[i])); sSA[i * 2 + 1] = p > 0 ? sceneFade : 0;
+      }
+      gl.bindBuffer(gl.ARRAY_BUFFER, bSPos); gl.bufferSubData(gl.ARRAY_BUFFER, 0, sPos);
+      gl.bindBuffer(gl.ARRAY_BUFFER, bSSA); gl.bufferSubData(gl.ARRAY_BUFFER, 0, sSA);
+      const formed = smooth(1.6, 3.4, st);
+      gl.useProgram(QUAD.p); attr(QUAD, "aCorner", quadBuf, 2);
+      drawQuad([0, STAR_Y, 0], sc(RX, 30), sc(UY, 30), 0, [1, .75, .35], null, .38 * formed * sceneFade, 0, time);
+      disableAttrs(QUAD);
+      drawPoints(bSPos, bSCol, bSSA, NS, 200 * DPR);
+      if (formed > 0) {
+        for (let i = 0; i < NQ; i++) {
+          const ph = (qPh[i] + gt * .32) % 1;
+          qPos.set([qJ[i * 2] * (1 - ph * .8), ph * (STAR_Y - 8), qJ[i * 2 + 1] * (1 - ph * .8)], i * 3);
+          qSA.set([1 + (i % 3) * .5, formed * sceneFade * (.4 + .6 * Math.sin(ph * Math.PI))], i * 2);
+        }
+        gl.bindBuffer(gl.ARRAY_BUFFER, bQPos); gl.bufferSubData(gl.ARRAY_BUFFER, 0, qPos);
+        gl.bindBuffer(gl.ARRAY_BUFFER, bQSA); gl.bufferSubData(gl.ARRAY_BUFFER, 0, qSA);
+        drawPoints(bQPos, bQCol, bQSA, NQ, 150 * DPR);
+      }
+    }
+
+    // fuegos artificiales
+    let anyFw = false;
+    for (let i = 0; i < NF; i++) {
+      const t = time - fT0[i];
+      if (t < 0 || t > fLife[i]) { fSA[i * 2 + 1] = 0; continue; }
+      anyFw = true;
+      const drag = (1 - Math.exp(-t * 1.6)) / 1.6;
+      fPos[i * 3] = fOrg[i * 3] + fVel[i * 3] * drag;
+      fPos[i * 3 + 1] = fOrg[i * 3 + 1] + fVel[i * 3 + 1] * drag - 2.2 * t * t;
+      fPos[i * 3 + 2] = fOrg[i * 3 + 2] + fVel[i * 3 + 2] * drag;
+      const life = 1 - t / fLife[i];
+      fSA[i * 2] = 1.6 + life * 1.4; fSA[i * 2 + 1] = life * life * (.7 + .3 * Math.sin(t * 30 + i));
+    }
+    if (anyFw) {
+      gl.bindBuffer(gl.ARRAY_BUFFER, bFPos); gl.bufferSubData(gl.ARRAY_BUFFER, 0, fPos);
+      gl.bindBuffer(gl.ARRAY_BUFFER, bFSA); gl.bufferSubData(gl.ARRAY_BUFFER, 0, fSA);
+      drawPoints(bFPos, bFCol, bFSA, NF, 150 * DPR);
+    }
+  }
+
+  if (started && T < OFF + 2) drawBang(T, time);
+  if (surprise && !backing && sNow > 4.0 && sNow < 10.8) drawWorm(sNow, time);
+  if (hyper && (now - hT0) / 1000 < 4.6) drawWarp((now - hT0) / 1000, time);
+  { const hh = (now - hT0) / 1000, cov = hyper ? smooth(1.0, 1.7, hh) * (1 - smooth(3.3, 4.3, hh)) : 0;
+    const o = String(+(1 - cov).toFixed(3)); if (ov.style.opacity !== o) ov.style.opacity = o; }
+  drawOverlay(TG, time, dt);
+  requestAnimationFrame(frame);
+}
+
+/* ---------- capa 2D: frases, estrellitas, estrellas fugaces ---------- */
+function starPath(x, y, ro, ri, rot) {
+  o2.beginPath();
+  for (let j = 0; j < 10; j++) { const a = -Math.PI / 2 + rot + j * Math.PI / 5, r = j % 2 ? ri : ro; j ? o2.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r) : o2.moveTo(x + Math.cos(a) * r, y + Math.sin(a) * r); }
+  o2.closePath();
+}
+function drawOverlay(T, time, dt) {
+  o2.setTransform(1, 0, 0, 1, 0, 0); o2.clearRect(0, 0, ov.width, ov.height);
+  o2.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+  // estrellas fugaces
+  if (rnd() < .005) shooting.push({ x: rnd() * W, y: rnd() * H * .45, vx: -(320 + rnd() * 300), vy: 120 + rnd() * 150, life: 1 });
+  shooting = shooting.filter(s => s.life > 0);
+  o2.globalCompositeOperation = "lighter";
+  for (const s of shooting) {
+    s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt * 1.2;
+    const g = o2.createLinearGradient(s.x, s.y, s.x - s.vx * .2, s.y - s.vy * .2);
+    g.addColorStop(0, `rgba(220,245,255,${s.life})`); g.addColorStop(1, "rgba(220,245,255,0)");
+    o2.strokeStyle = g; o2.lineWidth = 1.6; o2.beginPath(); o2.moveTo(s.x, s.y); o2.lineTo(s.x - s.vx * .2, s.y - s.vy * .2); o2.stroke();
+  }
+  if (!started) return;
+
+  // frases sobre el plano (acostadas, siguiendo la curva)
+  const la = smooth(7, 9, T) * sceneFade;
+  if (la > .01) {
+    o2.textAlign = "center"; o2.textBaseline = "middle";
+    o2.font = "700 15px 'Trebuchet MS',system-ui,sans-serif";
+    for (const l of labels) {
+      const a = l.a + l.sp * gt, ca = Math.cos(a), sa = Math.sin(a), px = l.r * ca, pz = l.r * sa;
+      if (!toScreen(px, l.y, pz)) continue;
+      const x0 = SP[0], y0 = SP[1], k = SP[2];
+      const d = 1;
+      if (!toScreen(px - sa * d, l.y, pz + ca * d)) continue;
+      let ax = SP[0] - x0, ay = SP[1] - y0;
+      if (!toScreen(px + ca * d, l.y, pz + sa * d)) continue;
+      let bx = SP[0] - x0, by = SP[1] - y0;
+      if (ax < 0) { ax = -ax; ay = -ay; bx = -bx; by = -by; }
+      if (ax * by - ay * bx < 0) { bx = -bx; by = -by; }   // nunca en espejo
+      const s = PORT ? 0.2 : 0.15;   // tamaño de las frases
+      o2.setTransform(DPR * ax * s, DPR * ay * s, DPR * bx * s, DPR * by * s, DPR * x0, DPR * y0);
+      o2.globalAlpha = la * clamp(k / 3.2, .25, 1);
+      o2.shadowColor = "rgba(150,110,255,.95)"; o2.shadowBlur = 12;
+      o2.fillStyle = l.hue; o2.fillText(l.txt, 0, 0);
+    }
+    o2.shadowBlur = 0; o2.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
+
+  // estrellitas para tocar
+  const ca2 = smooth(7.5, 9.5, T) * sceneFade;
+  o2.globalCompositeOperation = "source-over";
+  for (const c of clickStars) {
+    c.sx = c.sy = -999;
+    if (ca2 < .01) continue;
+    const a = c.a + c.sp * gt, y = c.y + Math.sin(gt * 1.5 + c.ph) * 1.5;
+    if (!toScreen(c.r * Math.cos(a), y, c.r * Math.sin(a))) continue;
+    const size = clamp(SP[2] * 1.5, 8, 20); c.sx = SP[0]; c.sy = SP[1]; c.hit = Math.max(26, size * 2.2);
+    const pul = .5 + .5 * Math.sin(gt * 3 + c.ph);
+    const g = o2.createRadialGradient(c.sx, c.sy, 0, c.sx, c.sy, size * 3.2);
+    g.addColorStop(0, `rgba(255,210,120,${.55 * ca2})`); g.addColorStop(1, "rgba(255,210,120,0)");
+    o2.globalCompositeOperation = "lighter"; o2.globalAlpha = .6 + .4 * pul; o2.fillStyle = g;
+    o2.beginPath(); o2.arc(c.sx, c.sy, size * 3.2, 0, TAU); o2.fill();
+    o2.globalCompositeOperation = "source-over"; o2.globalAlpha = ca2;
+    starPath(c.sx, c.sy, size, size * .45, gt * .8 + c.ph);
+    const gr = o2.createRadialGradient(c.sx, c.sy, 0, c.sx, c.sy, size);
+    gr.addColorStop(0, "#fffaf0"); gr.addColorStop(.6, "#ffd27a"); gr.addColorStop(1, "#ffb84a");
+    o2.fillStyle = gr; o2.fill();
+    o2.globalAlpha = ca2 * (1 - pul) * .7; o2.strokeStyle = "#7af0ff"; o2.lineWidth = 1.5;
+    o2.beginPath(); o2.arc(c.sx, c.sy, size * (1.4 + pul * .9), 0, TAU); o2.stroke();
+  }
+  o2.globalAlpha = 1;
+  if (toScreen(0, STAR_Y, 0)) starScreen = { x: SP[0], y: SP[1], r: STAR_R * SP[2] * .9 };
+}
+
+/* =========================================================
+   Inicio (Spotify o botón)
+   ========================================================= */
 const spotM = (CONFIG.spotify || "").match(/open\.spotify\.com\/(?:intl-[a-z]+\/)?(playlist|album|track|artist)\/([A-Za-z0-9]+)/);
 const spotBox = $("spotBox");
-
-function startShow(withMp3) {
+function startShow() {
   if (started) return;
-  if (withMp3) playSong(0);
-  $("intro").classList.add("out"); started = true; t0 = performance.now() + 1200;
+  $("intro").classList.add("out");
   if (spotM) {
-    // el reproductor se desvanece y pasa al panel 🎵 sin recargarse (la música sigue)
     spotBox.classList.add("fade");
-    setTimeout(() => {
-      spotBox.classList.remove("intro", "fade"); spotBox.removeAttribute("style"); spotBox.classList.add("panel");
-    }, 1500);
-    setTimeout(() => $("musicBtn").classList.add("on"), 9000);
+    setTimeout(() => { spotBox.classList.remove("intro", "fade"); spotBox.removeAttribute("style"); spotBox.classList.add("panel"); }, 1500);
   }
-  setTimeout(() => $("top").classList.add("on"), 8200);
-  setTimeout(() => $("hint").classList.add("on"), 10000);
-  setTimeout(() => $("msgBtn").classList.add("on"), 10000);
-  setTimeout(() => $("hint").classList.remove("on"), 17000);
+  setTimeout(() => { started = true; T0 = performance.now(); gt = 0; }, 900);
+  setTimeout(() => { if (!surprise) $("top").classList.add("on"); }, 9500 + OFF * 1000);
+  setTimeout(() => { if (surprise) return; $("hint").classList.add("on"); $("msgBtn").classList.add("on"); if (spotM) $("musicBtn").classList.add("on"); }, 11000 + OFF * 1000);
+  setTimeout(() => $("hint").classList.remove("on"), 18000 + OFF * 1000);
+  // texto del comienzo + vibración en la explosión
+  setTimeout(() => $("bbText").classList.add("on"), 900 + 500);
+  setTimeout(() => $("bbText").classList.remove("on"), 900 + (TB - .5) * 1000);
+  setTimeout(() => { try { navigator.vibrate && navigator.vibrate([60, 40, 220, 60, 90]); } catch (e) {} }, 900 + TB * 1000);
+  // si en un rato no abrió todos los mensajes, igual aparece la sorpresa
+  setTimeout(() => { if (!surprise) $("giftBtn").classList.add("on"); }, 100000);
 }
-$("go").onclick = () => startShow(true);
-$("noMusic").onclick = () => startShow(false);
+$("go").onclick = startShow;
+$("noMusic").onclick = startShow;
 
 if (spotM) {
   document.body.classList.add("spotify");
   spotBox.classList.add("intro");
   $("musicBtn").onclick = () => spotBox.classList.toggle("open");
-  cv.addEventListener("pointerdown", () => spotBox.classList.remove("open"));
   const place = () => {
     if (!spotBox.classList.contains("intro")) return;
     const r = $("spotSlot").getBoundingClientRect();
     Object.assign(spotBox.style, { left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px" });
   };
   place(); addEventListener("resize", place); const pi = setInterval(() => started ? clearInterval(pi) : place(), 400);
-
   window.onSpotifyIframeApiReady = API => {
     API.createController($("spotEmbed"),
       { uri: `spotify:${spotM[1]}:${spotM[2]}`, width: "100%", height: 152, theme: "dark" },
-      ctrl => ctrl.addListener("playback_update", e => {
-        if (e && e.data && !e.data.isPaused && !e.data.isBuffering) startShow(false);
-      }));
+      ctrl => ctrl.addListener("playback_update", e => { if (e && e.data && !e.data.isPaused && !e.data.isBuffering) startShow(); }));
   };
-  const sc = document.createElement("script");
-  sc.src = "https://open.spotify.com/embed/iframe-api/v1"; sc.async = true;
+  const sc = document.createElement("script"); sc.src = "https://open.spotify.com/embed/iframe-api/v1"; sc.async = true;
   document.head.appendChild(sc);
-}
-
-/* ---------- dibujo ---------- */
-function starPath(x, y, ro, ri, rot) {
-  ctx.beginPath();
-  for (let j = 0; j < 10; j++) {
-    const a = -Math.PI / 2 + rot + j * Math.PI / 5, r = j % 2 ? ri : ro;
-    j ? ctx.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r) : ctx.moveTo(x + Math.cos(a) * r, y + Math.sin(a) * r);
-  }
-  ctx.closePath();
-}
-
-let shooting = [];
-function frame(now) {
-  const dt = Math.min(0.05, (now - last) / 1000); last = now;
-  if (started) { T = (now - t0) / 1000 * 0.8; if (T > 0) gt += dt; }
-  // auto-rotación con inercia
-  if (!ptrs.size) { yawVel *= 0.94; yaw += yawVel + dt * 0.07; }
-  cY = Math.cos(yaw); sY = Math.sin(yaw); cP = Math.cos(pitch); sP = Math.sin(pitch);
-
-  if (innerWidth && (innerWidth !== W || innerHeight !== H || bg.width < 2)) resize();
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = 1;
-  if (bg.width > 1 && bg.height > 1) ctx.drawImage(bg, 0, 0);
-  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-
-  // estrellas titilantes
-  ctx.globalCompositeOperation = "lighter";
-  for (const s of twinkles) {
-    ctx.globalAlpha = 0.35 + 0.35 * Math.sin(now / 600 + s.p);
-    ctx.fillStyle = "#cfefff"; ctx.fillRect(s.x, s.y, s.s, s.s);
-  }
-  ctx.globalAlpha = 1;
-
-  // estrellas fugaces
-  if (rnd() < 0.006) shooting.push({ x: rnd() * W, y: rnd() * H * .5, vx: -(300 + rnd() * 300), vy: 120 + rnd() * 150, life: 1 });
-  shooting = shooting.filter(s => s.life > 0);
-  for (const s of shooting) {
-    s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt * 1.2;
-    const gr = ctx.createLinearGradient(s.x, s.y, s.x - s.vx * .18, s.y - s.vy * .18);
-    gr.addColorStop(0, `rgba(220,245,255,${s.life})`); gr.addColorStop(1, "rgba(220,245,255,0)");
-    ctx.strokeStyle = gr; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(s.x - s.vx * .18, s.y - s.vy * .18); ctx.stroke();
-  }
-
-  if (started && T > 0) drawScene();
-  requestAnimationFrame(frame);
-}
-
-function drawScene() {
-  const forming = T < 3.6;
-  const fadeIn = smooth(0, 2.2, T);
-  // brillo del núcleo
-  proj(0, 0, 0); const ox = P[0], oy = P[1], ok = P[2];
-  const coreA = smooth(0.8, 3, T);
-  ctx.globalAlpha = 0.55 * coreA; let gs = 260 * ok; ctx.drawImage(glowViolet, ox - gs, oy - gs * sP - gs * 0.2, gs * 2, gs * 2 * sP + gs * 0.4);
-  ctx.globalAlpha = 0.45 * coreA; gs = 90 * ok; ctx.drawImage(glowCyan, ox - gs, oy - gs, gs * 2, gs * 2);
-  ctx.globalAlpha = 1;
-
-  // partículas de la galaxia
-  for (let b = 0; b < bins.length; b++) {
-    const L = bins[b]; if (!L.length) continue;
-    ctx.fillStyle = COLS[b]; ctx.globalAlpha = fadeIn;
-    for (let n = 0; n < L.length; n++) {
-      const i = L[n];
-      const a = gA[i] + gW[i] * gt, r = gR[i];
-      let x = r * Math.cos(a), y = gY[i], z = r * Math.sin(a);
-      if (forming) {
-        const e = easeIO(clamp((T - gDel[i]) / 2.2, 0, 1));
-        x = gX0[i] + (x - gX0[i]) * e; y = gY0[i] + (y - gY0[i]) * e; z = gZ0[i] + (z - gZ0[i]) * e;
-      }
-      const x1 = x * cY - z * sY, z1 = x * sY + z * cY;
-      const d = D + (-y * sP + z1 * cP); if (d < 60) continue;
-      const k = F / d * S * zoom, s = gSz[i] * k;
-      ctx.fillRect(CX + x1 * k - s / 2, CY - (y * cP + z1 * sP) * k - s / 2, s, s);
-    }
-  }
-
-  ctx.globalAlpha = 1;
-  // agujero negro + anillo
-  if (T > 1.2) {
-    const al = smooth(1.2, 3, T);
-    ctx.save(); ctx.translate(ox, oy); ctx.scale(1, Math.max(sP, 0.15));
-    const rg = ctx.createRadialGradient(0, 0, 14 * ok, 0, 0, 44 * ok);
-    rg.addColorStop(0, "rgba(255,255,255,0)"); rg.addColorStop(.25, `rgba(255,245,220,${.9 * al})`);
-    rg.addColorStop(.5, `rgba(120,230,255,${.55 * al})`); rg.addColorStop(1, "rgba(120,80,255,0)");
-    ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(0, 0, 44 * ok, 0, TAU); ctx.fill(); ctx.restore();
-    ctx.globalCompositeOperation = "source-over";
-    ctx.fillStyle = `rgba(0,0,0,${al})`; ctx.beginPath(); ctx.arc(ox, oy, 12 * ok, 0, TAU); ctx.fill();
-    ctx.strokeStyle = `rgba(255,240,210,${.8 * al})`; ctx.lineWidth = Math.max(1, 1.6 * ok);
-    ctx.beginPath(); ctx.arc(ox, oy, 13 * ok, 0, TAU); ctx.stroke();
-    ctx.globalCompositeOperation = "lighter";
-  }
-
-  // frases sobre el plano
-  if (T > 5) drawLabels(smooth(5, 6.8, T));
-
-  // estrella gigante
-  if (T > 2.8) drawBigStar(T - 2.8);
-
-  // estrellitas tocables
-  if (T > 5.5) drawClickStars(smooth(5.5, 7, T));
-}
-
-function drawLabels(alpha) {
-  ctx.font = "700 15px 'Trebuchet MS',system-ui,sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  for (const l of labels) {
-    const a = l.a + l.w * gt, ca = Math.cos(a), sa = Math.sin(a);
-    const px = l.r * ca, pz = l.r * sa;
-    const d = proj(px, l.y, pz); const x0 = P[0], y0 = P[1];
-    proj(px - sa * 10, l.y, pz + ca * 10); let ax = (P[0] - x0) / 10, ay = (P[1] - y0) / 10;
-    proj(px + ca * 10, l.y, pz + sa * 10); let bx = (P[0] - x0) / 10, by = (P[1] - y0) / 10;
-    if (ax < 0) { ax = -ax; ay = -ay; bx = -bx; by = -by; }
-    // que el texto "mire hacia arriba" en pantalla
-    if (by > 0) { bx = -bx; by = -by; ax = -ax; ay = -ay; if (ax < 0) { ax = -ax; ay = -ay; bx = -bx; by = -by; } }
-    const depthA = clamp(1.25 - (d - D + 300) / 900, 0.25, 1);
-    ctx.setTransform(DPR * ax, DPR * ay, DPR * bx, DPR * by, DPR * x0, DPR * y0);
-    ctx.globalAlpha = alpha * depthA;
-    ctx.shadowColor = "rgba(140,110,255,0.9)"; ctx.shadowBlur = 10;
-    ctx.fillStyle = l.hue; ctx.fillText(l.txt, 0, 0);
-  }
-  ctx.shadowBlur = 0; ctx.globalAlpha = 1; ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-}
-
-function drawBigStar(t) {
-  proj(0, STAR_Y, 0); const cx = P[0], cy = P[1], k = P[2];
-  const spin = Math.sin(gt * 0.6) * 0.45, cs = Math.cos(spin);
-  const pulse = 1 + 0.035 * Math.sin(gt * 2.4);
-  const formed = smooth(1.6, 3.2, t);
-  starScreen = { x: cx, y: cy, r: ROUT * k * 0.9 };
-  // halo
-  ctx.globalAlpha = 0.5 * formed; const gs = 230 * k; ctx.drawImage(glowGold, cx - gs, cy - gs, gs * 2, gs * 2); ctx.globalAlpha = 1;
-
-  for (let b = 0; b < sBins.length; b++) {
-    const L = sBins[b]; if (!L.length) continue; ctx.fillStyle = COLS[b];
-    for (let n = 0; n < L.length; n++) {
-      const i = L[n];
-      const p = clamp((t - sDel[i]) / 1.7, 0, 1); if (p <= 0) continue;
-      const rise = easeO(clamp(p * 1.7, 0, 1)), spread = smooth(0.45, 1, p);
-      const tw = 1 + 0.25 * Math.sin(gt * 3 + sPh[i]);
-      proj(sJx[i] * (1 - spread), STAR_Y * rise, sJz[i] * (1 - spread));
-      const kk = P[2], s = sSz[i] * kk * tw;
-      ctx.fillRect(P[0] + sOx[i] * cs * pulse * kk * spread - s / 2, P[1] - sOy[i] * pulse * kk * spread - s / 2, s, s);
-    }
-  }
-  // chorro continuo
-  if (formed > 0) {
-    ctx.globalAlpha = 0.8 * formed;
-    for (let i = 0; i < QN; i++) {
-      const ph = (qPh[i] + gt * 0.35) % 1;
-      proj(qJx[i] * (1 - ph * .7), ph * (STAR_Y - 60), qJz[i] * (1 - ph * .7));
-      const s = (1 + (i % 3) * 0.5) * P[2];
-      ctx.fillStyle = i % 3 ? COLS[8] : COLS[6];
-      ctx.fillRect(P[0] - s / 2, P[1] - s / 2, s, s);
-    }
-    ctx.globalAlpha = 1;
-  }
-}
-
-function drawClickStars(alpha) {
-  for (const c of clickStars) {
-    const a = c.a + c.w * gt, y = c.y + Math.sin(gt * 1.5 + c.ph) * 8;
-    proj(c.r * Math.cos(a), y, c.r * Math.sin(a));
-    const k = P[2], size = Math.max(9, 15 * k);
-    c.sx = P[0]; c.sy = P[1]; c.hit = Math.max(26, size * 2.2);
-    const pul = 0.5 + 0.5 * Math.sin(gt * 3 + c.ph);
-    ctx.globalAlpha = alpha * (0.5 + 0.4 * pul);
-    const gs = size * 3.2; ctx.drawImage(glowGold, c.sx - gs, c.sy - gs, gs * 2, gs * 2);
-    ctx.globalAlpha = alpha;
-    ctx.globalCompositeOperation = "source-over";
-    starPath(c.sx, c.sy, size, size * 0.45, gt * 0.8 + c.ph);
-    const gr = ctx.createRadialGradient(c.sx, c.sy, 0, c.sx, c.sy, size);
-    gr.addColorStop(0, "#fffaf0"); gr.addColorStop(.6, "#ffd27a"); gr.addColorStop(1, "#ffb84a");
-    ctx.fillStyle = gr; ctx.fill();
-    // anillo "tocame"
-    ctx.globalAlpha = alpha * (1 - pul) * 0.7; ctx.strokeStyle = "#7af0ff"; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.arc(c.sx, c.sy, size * (1.4 + pul * 0.9), 0, TAU); ctx.stroke();
-    ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 1;
-  }
 }
 
 requestAnimationFrame(frame);
